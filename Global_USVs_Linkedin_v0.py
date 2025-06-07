@@ -5,9 +5,12 @@ from geopy.geocoders import Nominatim
 import numpy as np
 import time
 
+# ─────────────────────────────────────────────────────────────
+# Page Setup
+# ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
-st.markdown("Visualize all Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical survey — by country and manufacturer.")
+st.markdown("Visualize Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical surveys – by country and manufacturer.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
@@ -28,7 +31,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and Geocode
+# Load and geocode + centroids
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data_and_centroids():
@@ -55,9 +58,9 @@ def load_data_and_centroids():
 df_raw, country_centroids = load_data_and_centroids()
 
 # ─────────────────────────────────────────────────────────────
-# Apply jitter (visual separation of USVs from same country)
+# Apply jitter to plot icons away from country center
 # ─────────────────────────────────────────────────────────────
-def jitter_data(df, jitter=0.3):
+def jitter_data(df, jitter=1.5):  # degrees of separation
     df = df.copy()
     lat_list, lon_list = [], []
     grouped = df.groupby("Country")
@@ -78,7 +81,18 @@ def jitter_data(df, jitter=0.3):
 df = jitter_data(df_raw)
 
 # ─────────────────────────────────────────────────────────────
-# Country selector — filters only table, not the map
+# Add USV icon (same for all)
+# ─────────────────────────────────────────────────────────────
+icon_url = "https://cdn-icons-png.flaticon.com/512/1995/1995471.png"  # Boat icon
+df["icon_data"] = [{
+    "url": icon_url,
+    "width": 512,
+    "height": 512,
+    "anchorY": 512
+} for _ in range(len(df))]
+
+# ─────────────────────────────────────────────────────────────
+# Country selector
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Select a country")
 countries = sorted(df["Country"].unique())
@@ -94,7 +108,7 @@ else:
     map_zoom = 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map shows all USVs (global)
+# Map Display (global icons always shown)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map (all countries)")
 st.pydeck_chart(pdk.Deck(
@@ -107,12 +121,13 @@ st.pydeck_chart(pdk.Deck(
     ),
     layers=[
         pdk.Layer(
-            "ScatterplotLayer",
+            "IconLayer",
             data=df,
+            get_icon="icon_data",
             get_position='[Longitude, Latitude]',
-            get_fill_color='[0, 100, 255, 160]',
-            get_radius=50000,
-            pickable=True,
+            size_scale=15,
+            get_size=4,
+            pickable=True
         )
     ],
     tooltip={
@@ -127,12 +142,12 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Show table filtered by country
+# Table of filtered USVs
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs in {selected_country}")
 else:
-    st.subheader("📋 All USVs (unfiltered)")
+    st.subheader("📋 All USVs")
 
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
