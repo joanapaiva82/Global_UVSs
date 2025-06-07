@@ -2,14 +2,15 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 from geopy.geocoders import Nominatim
+import numpy as np
 import time
 
 # ─────────────────────────────────────────────────────────────
-# Page Config
+# Page Setup
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Global Survey USVs Map", layout="wide")
+st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
-st.markdown("Explore the worldwide distribution of Uncrewed Surface Vessels (USVs) used for hydrographic, geophysical, and environmental survey operations.")
+st.markdown("Explore the worldwide distribution of Uncrewed Surface Vessels (USVs) used in hydrographic, geophysical, and environmental survey operations.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
@@ -30,10 +31,10 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load Data + Add Coordinates if Missing
+# Load + Geocode + Jitter
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
-def load_data():
+def load_and_prepare_data():
     try:
         df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     except:
@@ -52,12 +53,31 @@ def load_data():
         df["Latitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[0])
         df["Longitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[1])
 
-    return df.dropna(subset=["Latitude", "Longitude"])
+    df = df.dropna(subset=["Latitude", "Longitude"])
+    return apply_jitter(df)
 
-df = load_data()
+def apply_jitter(df, jitter=0.3):
+    df = df.copy()
+    lat_list, lon_list = [], []
+    grouped = df.groupby("Country")
+
+    for _, group in grouped:
+        count = len(group)
+        angles = np.linspace(0, 2 * np.pi, count, endpoint=False)
+        lat_offsets = jitter * np.sin(angles)
+        lon_offsets = jitter * np.cos(angles)
+
+        lat_list.extend(group["Latitude"].values + lat_offsets)
+        lon_list.extend(group["Longitude"].values + lon_offsets)
+
+    df["Latitude"] = lat_list
+    df["Longitude"] = lon_list
+    return df
+
+df = load_and_prepare_data()
 
 # ─────────────────────────────────────────────────────────────
-# Sidebar Country Filter
+# Filter by Country
 # ─────────────────────────────────────────────────────────────
 st.sidebar.header("🔎 Filter")
 countries = sorted(df["Country"].unique())
@@ -73,9 +93,10 @@ else:
     map_lat, map_lon, map_zoom = 10, 0, 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map
+# Map Display
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
+
 st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
@@ -89,9 +110,9 @@ st.pydeck_chart(pdk.Deck(
             "ScatterplotLayer",
             data=df_filtered,
             get_position='[Longitude, Latitude]',
-            get_fill_color='[0, 100, 255, 180]',
+            get_fill_color='[30, 144, 255, 160]',
             get_radius=50000,
-            pickable=True,
+            pickable=True
         )
     ],
     tooltip={
@@ -106,11 +127,11 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Table and Jump to USV
+# Table & Jump-to-USV
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs in {selected_country}")
-    usv_names = df_filtered["Name"].unique().tolist()
+    usv_names = df_filtered["Name"].dropna().unique().tolist()
     selected_usv = st.selectbox("Jump to USV", ["—"] + usv_names)
 
     if selected_usv != "—":
