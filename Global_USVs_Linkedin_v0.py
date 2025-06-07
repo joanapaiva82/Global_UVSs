@@ -4,21 +4,14 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
-# Unified Session State Init
+# Setup Session Flags (no rerun logic at top)
 # ─────────────────────────────────────────────────────────────
-session_defaults = {
-    "selected_country": "🌍 Show All",
-    "zoom_override": False,
-    "reset_dropdown": False
-}
-for key, default in session_defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = default
-
-# Rerun only if Clear Filter triggered
-if st.session_state.reset_dropdown:
-    st.session_state.reset_dropdown = False
-    st.experimental_rerun()
+if "selected_country" not in st.session_state:
+    st.session_state.selected_country = "🌍 Show All"
+if "zoom_override" not in st.session_state:
+    st.session_state.zoom_override = False
+if "clear_filter_clicked" not in st.session_state:
+    st.session_state.clear_filter_clicked = False
 
 # ─────────────────────────────────────────────────────────────
 # Page Setup
@@ -27,7 +20,7 @@ st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Manufacturer Message (Full)
+# Manufacturer Section
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
@@ -47,7 +40,7 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Disclaimer (Full)
+# Disclaimer
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Disclaimer (click to expand)"):
     st.markdown("""
@@ -61,7 +54,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Jitter Data
+# Load & Jitter Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -71,11 +64,11 @@ def load_data():
 def apply_jitter(df, jitter=0.8):
     out = []
     for country, group in df.groupby("Country"):
-        count = len(group)
-        if count == 1:
+        n = len(group)
+        if n == 1:
             out.append(group)
             continue
-        angles = np.linspace(0, 2 * np.pi, count, endpoint=False)
+        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
         jittered = group.copy()
         jittered["Latitude"] += jitter * np.sin(angles)
         jittered["Longitude"] += jitter * np.cos(angles)
@@ -91,35 +84,44 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Filter Dropdown + Buttons
+# Filter Dropdown + Buttons (No crash)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
+
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
-index = countries.index(st.session_state.selected_country)
-selected = st.selectbox("Select a country", countries, index=index)
+
+# Use manual index override when Clear Filter clicked
+dropdown_index = 0 if st.session_state.clear_filter_clicked else countries.index(st.session_state.selected_country)
+selected = st.selectbox("Select a country", countries, index=dropdown_index)
+
+# Update session state
 st.session_state.selected_country = selected
 
+# Button logic
 col1, col2 = st.columns([0.15, 0.15])
 with col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
 with col2:
     if st.button("🧹 Clear Filter"):
-        st.session_state.selected_country = "🌍 Show All"
+        st.session_state.clear_filter_clicked = True
         st.session_state.zoom_override = True
-        st.session_state.reset_dropdown = True
+
+# Reset clear flag after it's used once
+if st.session_state.clear_filter_clicked:
+    st.session_state.clear_filter_clicked = False
 
 # ─────────────────────────────────────────────────────────────
-# Filter Data and Zoom Logic
+# Filter + Zoom Logic
 # ─────────────────────────────────────────────────────────────
-filtered_df = df if selected == "🌍 Show All" else df[df["Country"] == selected]
-zoom_now = st.session_state.zoom_override or selected == "🌍 Show All"
-map_lat = filtered_df["Latitude"].mean()
-map_lon = filtered_df["Longitude"].mean()
+df_filtered = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
+zoom_now = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
+map_lat = df_filtered["Latitude"].mean()
+map_lon = df_filtered["Longitude"].mean()
 map_zoom = 1.2 if zoom_now else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Render Map with Key to Force Reset
+# Map Display
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(
@@ -133,7 +135,7 @@ st.pydeck_chart(
         layers=[
             pdk.Layer(
                 "IconLayer",
-                data=filtered_df,
+                data=df_filtered,
                 get_icon="icon_data",
                 get_position='[Longitude, Latitude]',
                 size_scale=15,
@@ -143,25 +145,25 @@ st.pydeck_chart(
         ],
         tooltip={
             "html": """
-                <b>{Name}</b><br>
-                🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-                🌍 <b>Country:</b> {Country}<br>
-                📏 <b>Length:</b> {Max. Length (m)} m
+            <b>{Name}</b><br>
+            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+            🌍 <b>Country:</b> {Country}<br>
+            📏 <b>Length:</b> {Max. Length (m)} m
             """,
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="zoom_reset" if zoom_now else "map_static"
+    key="zoom_all" if zoom_now else "map_normal"
 )
 
-# Reset zoom flag after use (safe)
+# Reset zoom override cleanly after map render
 st.session_state.zoom_override = False
 
 # ─────────────────────────────────────────────────────────────
-# Table Display
+# Table
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
-st.dataframe(filtered_df[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
+st.dataframe(df_filtered[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
