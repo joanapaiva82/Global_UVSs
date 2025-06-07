@@ -29,11 +29,11 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load Data and Jitter Positions
+# Load Data and Apply Jitter
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
+    df = pd.read_csv("Global_USVs_With_LatLon.csv", encoding="utf-8")
     df = df.dropna(subset=["Latitude", "Longitude"])
     return df
 
@@ -57,7 +57,7 @@ def apply_jitter(df, jitter_amount=0.8):
 
 df = apply_jitter(df_raw)
 
-# Add USV icon
+# Add vessel icon
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
@@ -67,7 +67,7 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Initialize session state
+# Session State Init
 # ─────────────────────────────────────────────────────────────
 if "selected_country" not in st.session_state:
     st.session_state.selected_country = "🌍 Show All"
@@ -75,20 +75,22 @@ if "zoom_override" not in st.session_state:
     st.session_state.zoom_override = False
 
 # ─────────────────────────────────────────────────────────────
-# Filter Controls: Dropdown + Buttons
+# Filter Controls
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
-# Dropdown
+# Dropdown (without key=)
 selected_country = st.selectbox(
     "Select a country",
     ["🌍 Show All"] + sorted(df["Country"].unique()),
     index=(0 if st.session_state.selected_country == "🌍 Show All"
-           else sorted(df["Country"].unique()).index(st.session_state.selected_country) + 1),
-    key="selected_country"
+           else sorted(df["Country"].unique()).index(st.session_state.selected_country) + 1)
 )
 
-# Buttons side-by-side
+# Update selected_country in session
+st.session_state.selected_country = selected_country
+
+# Buttons: side-by-side
 btn_col1, btn_col2 = st.columns([0.15, 0.15])
 with btn_col1:
     if st.button("🔍 Zoom to All"):
@@ -100,7 +102,7 @@ with btn_col2:
         st.experimental_rerun()
 
 # ─────────────────────────────────────────────────────────────
-# Filter Data and Map View Settings
+# Filter and Map View
 # ─────────────────────────────────────────────────────────────
 df_table = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
 map_lat = df_table["Latitude"].mean()
@@ -108,7 +110,7 @@ map_lon = df_table["Longitude"].mean()
 map_zoom = 1.2 if st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All" else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Display Map
+# Map Display
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(pdk.Deck(
@@ -142,7 +144,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# USV Table
+# Table View
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
