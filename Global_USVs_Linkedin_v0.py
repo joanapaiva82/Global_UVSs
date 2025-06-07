@@ -4,6 +4,13 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
+# Handle rerun triggered by "Clear Filter"
+# ─────────────────────────────────────────────────────────────
+if "rerun" in st.session_state and st.session_state.rerun:
+    st.session_state.rerun = False
+    st.experimental_rerun()
+
+# ─────────────────────────────────────────────────────────────
 # Page Setup
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
@@ -79,7 +86,7 @@ if "zoom_override" not in st.session_state:
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
-# Dropdown (without key=)
+# Dropdown
 selected_country = st.selectbox(
     "Select a country",
     ["🌍 Show All"] + sorted(df["Country"].unique()),
@@ -87,19 +94,21 @@ selected_country = st.selectbox(
            else sorted(df["Country"].unique()).index(st.session_state.selected_country) + 1)
 )
 
-# Update selected_country in session
+# Update session state with selection
 st.session_state.selected_country = selected_country
 
-# Buttons: side-by-side
+# Buttons side-by-side
 btn_col1, btn_col2 = st.columns([0.15, 0.15])
 with btn_col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
+
 with btn_col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
         st.session_state.zoom_override = True
-        st.experimental_rerun()
+        st.session_state.rerun = True  # safe trigger
+        st.stop()  # pause execution until rerun happens
 
 # ─────────────────────────────────────────────────────────────
 # Filter and Map View
@@ -144,7 +153,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Table View
+# Data Table
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
