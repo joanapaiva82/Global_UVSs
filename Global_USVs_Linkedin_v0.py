@@ -90,7 +90,9 @@ with btn1:
         st.session_state.zoom_override = True
 with btn2:
     if st.button("🧹 Clear Filter"):
-        st.session_state.selected_country = "🌍 Show All"
+        st.session_state.update({
+    "selected_country": "🌍 Show All"
+})
         st.session_state.zoom_override = True
         st.session_state.clear_filter_trigger = True  # trigger full rerun
 
