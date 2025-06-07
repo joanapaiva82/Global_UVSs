@@ -3,30 +3,41 @@ import pandas as pd
 import pydeck as pdk
 import numpy as np
 
-# ─────────────────────────────────────────────────────────────
-# Page Setup
-# ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Manufacturer Attention Banner
+# Initialize session_state
+# ─────────────────────────────────────────────────────────────
+for key, default in {
+    "selected_country": "🌍 Show All",
+    "zoom_override": False,
+    "rerun_trigger": False,
+    "clear_filter_trigger": False
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+# ─────────────────────────────────────────────────────────────
+# Safe rerun if clear_filter was triggered
+# ─────────────────────────────────────────────────────────────
+if st.session_state.clear_filter_trigger:
+    st.session_state.clear_filter_trigger = False
+    st.experimental_rerun()
+
+# ─────────────────────────────────────────────────────────────
+# Manufacturer Banner
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
     Your USV platform may already be listed here based on publicly available information.
 
-    To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute additional details such as:
+    To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute details such as:
+    - Specifications
+    - Sensor suite
+    - Use cases and certifications
 
-    - Technical specifications  
-    - Autonomy level and certifications  
-    - Sensor suite and power systems  
-    - Operational use cases
-
-    📬 Please contact me at **[joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)**  
-    I will share a short form for you to review and update the information.
-
-    This initiative supports my **MSc Hydrography dissertation** at the **University of Plymouth** and aims to strengthen industry visibility across academic and technical domains.
+    📬 [joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)
     """)
 
 # ─────────────────────────────────────────────────────────────
@@ -34,117 +45,81 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Disclaimer (click to expand)"):
     st.markdown("""
-    The information presented on this page has been compiled solely for **academic and research purposes** in support of a postgraduate dissertation in **MSc Hydrography at the University of Plymouth**.
-
-    All specifications, features, and descriptions of Uncrewed Surface Vessels (USVs) are based on **publicly available sources** and **have not been independently verified**.
-
-    **⚠️ This content is not intended to serve as an official or authoritative source.**  
-    Do not rely on this data for operational, procurement, or technical decisions.  
-    Please consult the original manufacturers for validated information.
+    This dashboard is built from public sources to support an **MSc Hydrography dissertation** at the **University of Plymouth**.
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and Jitter Data
+# Load and jitter data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
-    df = df.dropna(subset=["Latitude", "Longitude"])
-    return df
+    df = pd.read_csv("Global_USVs_Linkedin.csv")
+    return df.dropna(subset=["Latitude", "Longitude"])
 
-df_raw = load_data()
-
-def apply_jitter(df, jitter_amount=0.8):
-    jittered = []
+def apply_jitter(df, jitter=0.8):
+    output = []
     for country, group in df.groupby("Country"):
-        count = len(group)
-        if count == 1:
-            jittered.append(group)
+        n = len(group)
+        if n == 1:
+            output.append(group)
             continue
-        angles = np.linspace(0, 2 * np.pi, count, endpoint=False)
-        lat_offsets = jitter_amount * np.sin(angles)
-        lon_offsets = jitter_amount * np.cos(angles)
+        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
         group = group.copy()
-        group["Latitude"] += lat_offsets
-        group["Longitude"] += lon_offsets
-        jittered.append(group)
-    return pd.concat(jittered, ignore_index=True)
+        group["Latitude"] += jitter * np.sin(angles)
+        group["Longitude"] += jitter * np.cos(angles)
+        output.append(group)
+    return pd.concat(output, ignore_index=True)
 
-df = apply_jitter(df_raw)
-
-# Add USV icon
-icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
+df = apply_jitter(load_data())
 df["icon_data"] = [{
-    "url": icon_url,
-    "width": 512,
-    "height": 512,
-    "anchorY": 512
+    "url": "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png",
+    "width": 512, "height": 512, "anchorY": 512
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Session State Init
-# ─────────────────────────────────────────────────────────────
-if "selected_country" not in st.session_state:
-    st.session_state.selected_country = "🌍 Show All"
-if "zoom_override" not in st.session_state:
-    st.session_state.zoom_override = False
-if "rerun_trigger" not in st.session_state:
-    st.session_state.rerun_trigger = False
-
-# ─────────────────────────────────────────────────────────────
-# Filter Controls
+# Filters + Buttons
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
-# Country dropdown
-selected_country = st.selectbox(
-    "Select a country",
-    ["🌍 Show All"] + sorted(df["Country"].unique()),
-    index=(0 if st.session_state.selected_country == "🌍 Show All"
-           else sorted(df["Country"].unique()).index(st.session_state.selected_country) + 1)
-)
-st.session_state.selected_country = selected_country
+countries = ["🌍 Show All"] + sorted(df["Country"].unique())
+selected = st.selectbox("Select a country", countries, index=countries.index(st.session_state.selected_country), key="selected_country")
 
-# Buttons side by side
-btn_col1, btn_col2 = st.columns([0.15, 0.15])
-with btn_col1:
+btn1, btn2 = st.columns([0.15, 0.15])
+with btn1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
-with btn_col2:
+with btn2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
         st.session_state.zoom_override = True
-        st.session_state.rerun_trigger = True
+        st.session_state.clear_filter_trigger = True  # trigger full rerun
 
 # ─────────────────────────────────────────────────────────────
-# Filter and Map View
+# Filter data + determine zoom
 # ─────────────────────────────────────────────────────────────
-df_table = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
+filtered_df = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
 
-# Determine zoom state BEFORE resetting
-should_zoom_out = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
-
-map_lat = df_table["Latitude"].mean()
-map_lon = df_table["Longitude"].mean()
-map_zoom = 1.2 if should_zoom_out else 3.5
+zoom_to_all = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
+map_center_lat = filtered_df["Latitude"].mean()
+map_center_lon = filtered_df["Longitude"].mean()
+map_zoom = 1.2 if zoom_to_all else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Display Map with Dynamic Key
+# Map Display (with dynamic key)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(
     pdk.Deck(
         map_style="mapbox://styles/mapbox/light-v9",
         initial_view_state=pdk.ViewState(
-            latitude=map_lat,
-            longitude=map_lon,
-            zoom=map_zoom,
-            pitch=0,
+            latitude=map_center_lat,
+            longitude=map_center_lon,
+            zoom=map_zoom
         ),
         layers=[
             pdk.Layer(
                 "IconLayer",
-                data=df_table,
+                data=filtered_df,
                 get_icon="icon_data",
                 get_position='[Longitude, Latitude]',
                 size_scale=15,
@@ -154,32 +129,26 @@ st.pydeck_chart(
         ],
         tooltip={
             "html": """
-            <b>{Name}</b><br>
-            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-            🌍 <b>Country:</b> {Country}<br>
-            📏 <b>Length:</b> {Max. Length (m)} m
+                <b>{Name}</b><br>
+                🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+                🌍 <b>Country:</b> {Country}<br>
+                📏 <b>Length:</b> {Max. Length (m)} m
             """,
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="map_zoom_all" if should_zoom_out else "map_default"
+    key="map_zoom_all" if zoom_to_all else "map_normal"
 )
 
+# Reset zoom after render
+if st.session_state.zoom_override:
+    st.session_state.zoom_override = False
+
 # ─────────────────────────────────────────────────────────────
-# Table
+# Table View
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
-st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
+st.dataframe(filtered_df[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
-
-# ─────────────────────────────────────────────────────────────
-# Safe Rerun and Reset Zoom Flag
-# ─────────────────────────────────────────────────────────────
-if st.session_state.rerun_trigger:
-    st.session_state.rerun_trigger = False
-    st.experimental_rerun()
-
-if st.session_state.zoom_override:
-    st.session_state.zoom_override = False
