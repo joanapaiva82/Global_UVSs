@@ -6,16 +6,13 @@ import numpy as np
 # ─────────────────────────────────────────────────────────────
 # Safe rerun must happen BEFORE widgets render
 # ─────────────────────────────────────────────────────────────
-if "reset_filter" not in st.session_state:
-    st.session_state.reset_filter = False
+if "reset_dropdown" not in st.session_state:
+    st.session_state.reset_dropdown = False
 if "zoom_override" not in st.session_state:
     st.session_state.zoom_override = False
-if "selected_country" not in st.session_state:
-    st.session_state.selected_country = "🌍 Show All"
 
-# Trigger rerun if Clear Filter was clicked
-if st.session_state.reset_filter:
-    st.session_state.reset_filter = False
+if st.session_state.reset_dropdown:
+    st.session_state.reset_dropdown = False
     st.experimental_rerun()
 
 # ─────────────────────────────────────────────────────────────
@@ -25,7 +22,7 @@ st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Manufacturer Call (FULL TEXT)
+# Manufacturer Section (UNTOUCHED)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
@@ -45,7 +42,7 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Full Disclaimer (PRESERVED)
+# Disclaimer (UNTOUCHED)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Disclaimer (click to expand)"):
     st.markdown("""
@@ -59,7 +56,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Jitter Data
+# Load & Jitter Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -67,18 +64,18 @@ def load_data():
     return df.dropna(subset=["Latitude", "Longitude"])
 
 def apply_jitter(df, jitter=0.8):
-    output = []
+    jittered = []
     for country, group in df.groupby("Country"):
         n = len(group)
         if n == 1:
-            output.append(group)
+            jittered.append(group)
             continue
         angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
         group = group.copy()
         group["Latitude"] += jitter * np.sin(angles)
         group["Longitude"] += jitter * np.cos(angles)
-        output.append(group)
-    return pd.concat(output, ignore_index=True)
+        jittered.append(group)
+    return pd.concat(jittered, ignore_index=True)
 
 df = apply_jitter(load_data())
 df["icon_data"] = [{
@@ -89,14 +86,21 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Country Filter + Buttons (Safe Method)
+# Country Filter + Buttons (NO DIRECT SESSION OVERWRITE)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
-selected_index = 0 if st.session_state.selected_country == "🌍 Show All" else countries.index(st.session_state.selected_country)
 
-selected_country = st.selectbox("Select a country", countries, index=selected_index, key="selected_country")
+# Controlled dropdown index
+if "selected_country" not in st.session_state:
+    st.session_state.selected_country = "🌍 Show All"
+
+dropdown_index = 0 if st.session_state.selected_country == "🌍 Show All" else countries.index(st.session_state.selected_country)
+selected = st.selectbox("Select a country", countries, index=dropdown_index)
+
+# Update session state only after user interaction
+st.session_state.selected_country = selected
 
 col1, col2 = st.columns([0.15, 0.15])
 with col1:
@@ -106,20 +110,20 @@ with col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
         st.session_state.zoom_override = True
-        st.session_state.reset_filter = True
+        st.session_state.reset_dropdown = True
 
 # ─────────────────────────────────────────────────────────────
 # Filter and Zoom Logic
 # ─────────────────────────────────────────────────────────────
 df_filtered = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
-zooming = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
+zoom_active = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
 
 map_lat = df_filtered["Latitude"].mean()
 map_lon = df_filtered["Longitude"].mean()
-map_zoom = 1.2 if zooming else 3.5
+map_zoom = 1.2 if zoom_active else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Map Rendering with Dynamic Key
+# Map with Dynamic Key (to reset on Zoom to All)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(
@@ -143,23 +147,23 @@ st.pydeck_chart(
         ],
         tooltip={
             "html": """
-            <b>{Name}</b><br>
-            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-            🌍 <b>Country:</b> {Country}<br>
-            📏 <b>Length:</b> {Max. Length (m)} m
+                <b>{Name}</b><br>
+                🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+                🌍 <b>Country:</b> {Country}<br>
+                📏 <b>Length:</b> {Max. Length (m)} m
             """,
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="zoom_all" if zooming else "zoom_filtered"
+    key="map_zoom_all" if zoom_active else "map_zoom_static"
 )
 
-# Reset zoom flag after render
+# Reset zoom after use
 if st.session_state.zoom_override:
     st.session_state.zoom_override = False
 
 # ─────────────────────────────────────────────────────────────
-# Table View
+# Table
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(df_filtered[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
