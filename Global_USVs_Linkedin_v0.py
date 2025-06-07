@@ -5,10 +5,10 @@ import pydeck as pdk
 # ─────────────────────────────────────────────────────────────
 # Page setup
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Global USV Map", layout="wide")
+st.set_page_config(page_title="Global Survey USVs", layout="wide")
 
-st.title("🌍 Global Survey USVs")
-st.markdown("Explore the global distribution of **Uncrewed Surface Vessels (USVs)** used for survey operations. Zoom in by country, hover over a marker, and interact with the data below.")
+st.title("🌍 Global Survey USVs Map")
+st.markdown("Explore the global distribution of **Uncrewed Surface Vessels (USVs)** used for hydrographic, geophysical, and environmental survey operations.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer Section
@@ -34,30 +34,30 @@ with st.expander("📌 Disclaimer (click to expand)"):
 @st.cache_data
 def load_data():
     try:
-        return pd.read_csv("usv_map_data_final.csv", encoding="utf-8")
+        return pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     except:
-        return pd.read_csv("usv_map_data_final.csv", encoding="latin1")
+        return pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
 
 df = load_data()
+
+# Drop missing coords if present
+df = df.dropna(subset=["Latitude", "Longitude"])
 
 # ─────────────────────────────────────────────────────────────
 # Country Filter Dropdown
 # ─────────────────────────────────────────────────────────────
 st.sidebar.header("🔎 Filter")
-countries = df["Country"].sort_values().unique().tolist()
+countries = sorted(df["Country"].unique())
 selected_country = st.sidebar.selectbox("Select a country to focus", ["🌍 Show All"] + countries)
 
+# Filter and center map
 if selected_country != "🌍 Show All":
     df_filtered = df[df["Country"] == selected_country]
-else:
-    df_filtered = df
-
-# Center map based on selection
-if selected_country != "🌍 Show All":
     lat = df_filtered["Latitude"].mean()
     lon = df_filtered["Longitude"].mean()
     zoom = 3.5
 else:
+    df_filtered = df
     lat, lon, zoom = 10, 0, 1.3
 
 # ─────────────────────────────────────────────────────────────
@@ -78,17 +78,17 @@ st.pydeck_chart(pdk.Deck(
             "ScatterplotLayer",
             data=df_filtered,
             get_position='[Longitude, Latitude]',
-            get_radius=50000,
             get_fill_color='[0, 100, 250, 160]',
+            get_radius=50000,
             pickable=True
         )
     ],
     tooltip={
         "html": """
-            <b>{Name}</b><br>
-            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-            🌍 <b>Country:</b> {Country}<br>
-            📏 <b>Length:</b> {`Max. Length (m)`} m
+        <b>{Name}</b><br>
+        🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+        🌍 <b>Country:</b> {Country}<br>
+        📏 <b>Length:</b> {`Max. Length (m)`} m
         """,
         "style": {
             "backgroundColor": "white",
@@ -99,7 +99,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Country-Specific Table & Selector
+# Table + Jump to USV
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs based in {selected_country}")
@@ -115,4 +115,4 @@ if selected_country != "🌍 Show All":
 
 # Footer
 st.markdown("---")
-st.caption("📍 MSc Dissertation Tool by Joana Paiva – University of Plymouth")
+st.caption("📍 Built for MSc Hydrography Dissertation – University of Plymouth | Author: Joana Paiva")
