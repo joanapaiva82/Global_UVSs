@@ -31,7 +31,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Geocode + Country Fix
+# Load + Geocode + Fix Countries
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data_and_centroids():
@@ -40,7 +40,7 @@ def load_data_and_centroids():
     except:
         df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
 
-    # Fix common geocoding mismatches
+    # Fix inconsistent country names
     country_fix = {
         "UK": "United Kingdom",
         "USA": "United States",
@@ -49,7 +49,7 @@ def load_data_and_centroids():
     }
     df["Country"] = df["Country"].replace(country_fix)
 
-    # Geocode country centroids
+    # Geocode countries
     geolocator = Nominatim(user_agent="usv_geocoder")
     coords = {}
     for country in df["Country"].dropna().unique():
@@ -60,7 +60,7 @@ def load_data_and_centroids():
         except:
             coords[country] = (None, None)
 
-    # Remove any existing coordinates to avoid conflict
+    # Assign coordinates
     df = df.drop(columns=["Latitude", "Longitude"], errors="ignore")
     df["Latitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[0])
     df["Longitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[1])
@@ -70,9 +70,9 @@ def load_data_and_centroids():
 df_raw, country_centroids = load_data_and_centroids()
 
 # ─────────────────────────────────────────────────────────────
-# Apply jitter so icons don't overlap
+# Add jitter for overlapping USVs
 # ─────────────────────────────────────────────────────────────
-def jitter_data(df, jitter=1.5):  # degrees of spread
+def jitter_data(df, jitter=1.5):
     df = df.copy()
     lat_list, lon_list = [], []
     grouped = df.groupby("Country")
@@ -93,9 +93,9 @@ def jitter_data(df, jitter=1.5):  # degrees of spread
 df = jitter_data(df_raw)
 
 # ─────────────────────────────────────────────────────────────
-# Add USV icon to each row
+# Use custom USV icon from your GitHub repo
 # ─────────────────────────────────────────────────────────────
-icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_USVs/main/usv_icon.png"  # ← Replace with your hosted icon
+icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
     "width": 512,
@@ -104,7 +104,7 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Country Selector (filters table and zooms only)
+# Filter + Zoom by country (does not remove icons)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Select a country")
 countries = sorted(df["Country"].unique())
@@ -116,14 +116,12 @@ if selected_country != "🌍 Show All":
     map_zoom = 3.5
 else:
     df_table = df
-    map_lat, map_lon = 10, 0
-    map_zoom = 1.2
+    map_lat, map_lon, map_zoom = 10, 0, 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map: All USVs always shown
+# Map Display (all USVs always shown)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map (all countries)")
-
 st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
@@ -155,7 +153,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# USV Table (filtered by country)
+# USV Table
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs in {selected_country}")
