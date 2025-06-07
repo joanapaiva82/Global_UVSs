@@ -24,19 +24,19 @@ st.title("🌍 Global Survey USVs Map")
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
-    Your USV platform may already be listed here based on publicly available information.
+    Your USV platform may already be listed here based on information compiled from publicly available sources.
 
-    To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute additional details such as:
+    However, before displaying any technical or commercial details, I would like to **confirm the accuracy of this information directly with the manufacturer**.
 
-    - Technical specifications  
-    - Sensor configurations  
-    - Certifications and autonomy level  
-    - Typical use cases and deployment examples
+    If you represent a USV company, please reach out to me so I can share the preliminary data I’ve compiled about your platform. I kindly ask for your help to review and confirm the following:
+
+        - Technical specifications  
+        - Sensor configurations  
+        - Certifications and autonomy level  
+        - Typical use cases and deployment examples
 
     📬 Please email me at **[joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)**  
-    I’ll send you a short form to review and update the displayed information.
-
-    This supports the quality of my **MSc Hydrography dissertation** at the **University of Plymouth**, and ensures your platform is properly represented.
+    I’ll send you a summary of the information I’ve compiled for your review.
     """)
 
 # ─────────────────────────────────────────────────────────────
