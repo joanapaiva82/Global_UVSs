@@ -5,12 +5,9 @@ from geopy.geocoders import Nominatim
 import numpy as np
 import time
 
-# ─────────────────────────────────────────────────────────────
-# Page Setup
-# ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
-st.markdown("Explore the worldwide distribution of Uncrewed Surface Vessels (USVs) used in hydrographic, geophysical, and environmental survey operations.")
+st.markdown("Visualize all Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical survey — by country and manufacturer.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
@@ -31,7 +28,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Geocode
+# Load and Geocode
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data_and_centroids():
@@ -53,13 +50,12 @@ def load_data_and_centroids():
     df["Latitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[0])
     df["Longitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[1])
     centroids = {c: coords[c] for c in df["Country"].unique() if coords[c][0] is not None}
-
     return df.dropna(subset=["Latitude", "Longitude"]), centroids
 
 df_raw, country_centroids = load_data_and_centroids()
 
 # ─────────────────────────────────────────────────────────────
-# Jitter for overlapping USVs
+# Apply jitter (visual separation of USVs from same country)
 # ─────────────────────────────────────────────────────────────
 def jitter_data(df, jitter=0.3):
     df = df.copy()
@@ -82,25 +78,25 @@ def jitter_data(df, jitter=0.3):
 df = jitter_data(df_raw)
 
 # ─────────────────────────────────────────────────────────────
-# Country filter — move above map
+# Country selector — filters only table, not the map
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Select a country")
 countries = sorted(df["Country"].unique())
 selected_country = st.selectbox("Choose a country to explore", ["🌍 Show All"] + countries)
 
 if selected_country != "🌍 Show All":
-    df_filtered = df[df["Country"] == selected_country]
+    df_table = df[df["Country"] == selected_country]
     map_lat, map_lon = country_centroids[selected_country]
     map_zoom = 3.5
 else:
-    df_filtered = df
-    map_lat, map_lon, map_zoom = 10, 0, 1.2
+    df_table = df
+    map_lat, map_lon = 10, 0
+    map_zoom = 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map
+# Map shows all USVs (global)
 # ─────────────────────────────────────────────────────────────
-st.subheader("🗺️ USV Map")
-
+st.subheader("🗺️ USV Map (all countries)")
 st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
@@ -112,9 +108,9 @@ st.pydeck_chart(pdk.Deck(
     layers=[
         pdk.Layer(
             "ScatterplotLayer",
-            data=df_filtered,
+            data=df,
             get_position='[Longitude, Latitude]',
-            get_fill_color='[30, 144, 255, 160]',
+            get_fill_color='[0, 100, 255, 160]',
             get_radius=50000,
             pickable=True,
         )
@@ -131,11 +127,14 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# USV Table (No Jump)
+# Show table filtered by country
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs in {selected_country}")
-    st.dataframe(df_filtered[["Name", "Manufacturer", "Max. Length (m)"]])
+else:
+    st.subheader("📋 All USVs (unfiltered)")
+
+st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 # Footer
 st.markdown("---")
