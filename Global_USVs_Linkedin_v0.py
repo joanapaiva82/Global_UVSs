@@ -29,7 +29,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load Data
+# Load and Prepare Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -39,9 +39,6 @@ def load_data():
 
 df_raw = load_data()
 
-# ─────────────────────────────────────────────────────────────
-# Apply jitter to group of USVs per country
-# ─────────────────────────────────────────────────────────────
 def apply_jitter(df, jitter_amount=0.8):
     jittered = []
     for country, group in df.groupby("Country"):
@@ -60,9 +57,7 @@ def apply_jitter(df, jitter_amount=0.8):
 
 df = apply_jitter(df_raw)
 
-# ─────────────────────────────────────────────────────────────
 # Add USV icon
-# ─────────────────────────────────────────────────────────────
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
@@ -72,29 +67,34 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Sidebar Filters
+# Filter Section with Buttons on Top
 # ─────────────────────────────────────────────────────────────
-st.sidebar.header("🧭 Controls")
-selected_country = st.sidebar.selectbox("Filter by Country", ["🌍 Show All"] + sorted(df["Country"].unique()))
+st.subheader("🔎 Explore by Country")
 
-# Buttons
-col1, col2 = st.sidebar.columns(2)
-zoom_to_all = col1.button("🔍 Zoom to All")
-clear_filter = col2.button("🧹 Clear Filter")
+col1, col2, col3 = st.columns([3, 1, 1])
+
+with col1:
+    selected_country = st.selectbox("Select a country", ["🌍 Show All"] + sorted(df["Country"].unique()))
+
+with col2:
+    zoom_to_all = st.button("🔍 Zoom to All")
+
+with col3:
+    clear_filter = st.button("🧹 Clear Filter")
 
 if clear_filter:
     selected_country = "🌍 Show All"
 
-# Filtered Data
+# Filter the data
 df_table = df if selected_country == "🌍 Show All" else df[df["Country"] == selected_country]
 
-# Map Center & Zoom
+# Set map center and zoom
 map_lat = df_table["Latitude"].mean()
 map_lon = df_table["Longitude"].mean()
 map_zoom = 1.2 if zoom_to_all or selected_country == "🌍 Show All" else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Display Map
+# Map Display
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(pdk.Deck(
@@ -128,7 +128,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Data Table
+# Table View
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
