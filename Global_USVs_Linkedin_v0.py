@@ -29,7 +29,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and Prepare Data
+# Load and Clean Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -57,7 +57,9 @@ def apply_jitter(df, jitter_amount=0.8):
 
 df = apply_jitter(df_raw)
 
+# ─────────────────────────────────────────────────────────────
 # Add USV icon
+# ─────────────────────────────────────────────────────────────
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
@@ -67,28 +69,27 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Filter Section with Buttons on Top
+# Country Filter and Buttons
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
-col1, col2, col3 = st.columns([3, 1, 1])
+# Country selection
+selected_country = st.selectbox("Select a country", ["🌍 Show All"] + sorted(df["Country"].unique()))
 
-with col1:
-    selected_country = st.selectbox("Select a country", ["🌍 Show All"] + sorted(df["Country"].unique()))
-
-with col2:
+# Buttons below dropdown
+btn_col1, btn_col2 = st.columns([1, 1])
+with btn_col1:
     zoom_to_all = st.button("🔍 Zoom to All")
-
-with col3:
+with btn_col2:
     clear_filter = st.button("🧹 Clear Filter")
 
 if clear_filter:
     selected_country = "🌍 Show All"
 
-# Filter the data
+# Apply filter
 df_table = df if selected_country == "🌍 Show All" else df[df["Country"] == selected_country]
 
-# Set map center and zoom
+# Set map zoom and center
 map_lat = df_table["Latitude"].mean()
 map_lon = df_table["Longitude"].mean()
 map_zoom = 1.2 if zoom_to_all or selected_country == "🌍 Show All" else 3.5
@@ -128,7 +129,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Table View
+# USV Table
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
