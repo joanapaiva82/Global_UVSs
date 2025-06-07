@@ -4,6 +4,13 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
+# Safe rerun must be at top BEFORE any widgets render
+# ─────────────────────────────────────────────────────────────
+if "rerun_now" in st.session_state and st.session_state.rerun_now:
+    st.session_state.rerun_now = False
+    st.experimental_rerun()
+
+# ─────────────────────────────────────────────────────────────
 # Page Setup
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
@@ -12,35 +19,47 @@ st.title("🌍 Global Survey USVs Map")
 # ─────────────────────────────────────────────────────────────
 # Session State Init
 # ─────────────────────────────────────────────────────────────
-for key, default in {
+defaults = {
     "selected_country": "🌍 Show All",
     "zoom_override": False,
-    "clear_filter_trigger": False
-}.items():
+    "rerun_now": False
+}
+for key, value in defaults.items():
     if key not in st.session_state:
-        st.session_state[key] = default
+        st.session_state[key] = value
 
 # ─────────────────────────────────────────────────────────────
-# Manufacturer Banner
+# Manufacturer Banner (FULL TEXT PRESERVED)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
     Your USV platform may already be listed here based on publicly available information.
 
     To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute additional details such as:
-    - Specifications
-    - Autonomy & certification
-    - Use cases
 
-    📬 [joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)
+    - Technical specifications  
+    - Sensor configurations  
+    - Certifications and autonomy level  
+    - Typical use cases and deployment examples
+
+    📬 Please email me at **[joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)**  
+    I’ll send you a short form to review and update the displayed information.
+
+    This supports the quality of my **MSc Hydrography dissertation** at the **University of Plymouth**, and ensures your platform is properly represented.
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Disclaimer
+# Full Disclaimer (PRESERVED)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Disclaimer (click to expand)"):
     st.markdown("""
-    This dashboard is built from public sources to support an **MSc Hydrography dissertation** at the **University of Plymouth**.
+    The information presented on this page has been compiled solely for **academic and research purposes** in support of a postgraduate dissertation in **MSc Hydrography at the University of Plymouth**.
+
+    All specifications, features, and descriptions of Uncrewed Surface Vessels (USVs) are based on **publicly available sources** and **have not been independently verified**.
+
+    **⚠️ This content is not intended to serve as an official or authoritative source.**  
+    Do not rely on this data for operational, procurement, or technical decisions.  
+    Please consult the original manufacturers for validated information.
     """)
 
 # ─────────────────────────────────────────────────────────────
@@ -72,51 +91,45 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Filters + Buttons
+# Filter and Buttons
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
+
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
+selected_index = countries.index(st.session_state.selected_country)
+selected_country = st.selectbox("Select a country", countries, index=selected_index, key="selected_country")
 
-# Reset dropdown index if Clear Filter triggered
-selected_index = 0 if st.session_state.clear_filter_trigger else countries.index(st.session_state.selected_country)
-
-selected_country = st.selectbox("Select a country", countries, index=selected_index)
-st.session_state.selected_country = selected_country
-
-# Clear flag after use
-if st.session_state.clear_filter_trigger:
-    st.session_state.clear_filter_trigger = False
-
-btn1, btn2 = st.columns([0.15, 0.15])
-with btn1:
+col1, col2 = st.columns([0.15, 0.15])
+with col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
-with btn2:
+
+with col2:
     if st.button("🧹 Clear Filter"):
-        st.session_state.clear_filter_trigger = True
+        st.session_state.selected_country = "🌍 Show All"
         st.session_state.zoom_override = True
-        st.experimental_rerun()
+        st.session_state.rerun_now = True  # triggers safe rerun
 
 # ─────────────────────────────────────────────────────────────
-# Filter data + determine zoom
+# Apply filter and zoom logic
 # ─────────────────────────────────────────────────────────────
 filtered_df = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
+zoom_out = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
 
-zoom_to_all = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
-map_center_lat = filtered_df["Latitude"].mean()
-map_center_lon = filtered_df["Longitude"].mean()
-map_zoom = 1.2 if zoom_to_all else 3.5
+map_lat = filtered_df["Latitude"].mean()
+map_lon = filtered_df["Longitude"].mean()
+map_zoom = 1.2 if zoom_out else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Map Display (with dynamic key)
+# Display Map with dynamic key
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(
     pdk.Deck(
         map_style="mapbox://styles/mapbox/light-v9",
         initial_view_state=pdk.ViewState(
-            latitude=map_center_lat,
-            longitude=map_center_lon,
+            latitude=map_lat,
+            longitude=map_lon,
             zoom=map_zoom
         ),
         layers=[
@@ -140,15 +153,15 @@ st.pydeck_chart(
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="map_zoom_all" if zoom_to_all else "map_normal"
+    key="map_zoom_reset" if zoom_out else "map_static"
 )
 
-# Reset zoom flag after render
+# Reset zoom after use
 if st.session_state.zoom_override:
     st.session_state.zoom_override = False
 
 # ─────────────────────────────────────────────────────────────
-# Table View
+# Table
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(filtered_df[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
