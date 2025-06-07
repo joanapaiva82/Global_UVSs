@@ -72,7 +72,7 @@ def apply_jitter(df, jitter_amount=0.8):
 
 df = apply_jitter(df_raw)
 
-# Add USV icon
+# Add vessel icon
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
@@ -105,12 +105,11 @@ selected_country = st.selectbox(
 )
 st.session_state.selected_country = selected_country
 
-# Buttons
+# Buttons side by side
 btn_col1, btn_col2 = st.columns([0.15, 0.15])
 with btn_col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
-
 with btn_col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
@@ -121,9 +120,13 @@ with btn_col2:
 # Filter and Map View
 # ─────────────────────────────────────────────────────────────
 df_table = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
+
+# Determine zoom state BEFORE resetting
+should_zoom_out = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
+
 map_lat = df_table["Latitude"].mean()
 map_lon = df_table["Longitude"].mean()
-map_zoom = 1.2 if st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All" else 3.5
+map_zoom = 1.2 if should_zoom_out else 3.5
 
 # ─────────────────────────────────────────────────────────────
 # Display Map
@@ -169,12 +172,11 @@ st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
 
 # ─────────────────────────────────────────────────────────────
-# Safe Rerun (at the very end)
+# Safe Rerun and Reset Zoom Flag
 # ─────────────────────────────────────────────────────────────
 if st.session_state.rerun_trigger:
     st.session_state.rerun_trigger = False
     st.experimental_rerun()
 
-# Reset zoom flag after rendering
 if st.session_state.zoom_override:
     st.session_state.zoom_override = False
