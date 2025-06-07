@@ -5,13 +5,10 @@ import pydeck as pdk
 # ─────────────────────────────────────────────────────────────
 # Page setup
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="🌍 Global Survey USVs Map", layout="wide")
+st.set_page_config(page_title="Global USV Map", layout="wide")
 
 st.title("🌍 Global Survey USVs")
-st.markdown("""
-An interactive map showing **Uncrewed Surface Vessels (USVs)** used in the **hydrographic, geophysical, and environmental survey industry** around the world.
-Hover over a marker to explore specs like **name, manufacturer, country, and length**.
-""")
+st.markdown("Explore the global distribution of **Uncrewed Surface Vessels (USVs)** used for survey operations. Zoom in by country, hover over a marker, and interact with the data below.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer Section
@@ -32,46 +29,66 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Data Loader with Encoding Fallback
+# Load data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
     try:
-        return pd.read_csv("usv_map_data_ready.csv", encoding="utf-8")
-    except UnicodeDecodeError:
-        return pd.read_csv("usv_map_data_ready.csv", encoding="latin1")
+        return pd.read_csv("usv_map_data_final.csv", encoding="utf-8")
+    except:
+        return pd.read_csv("usv_map_data_final.csv", encoding="latin1")
 
 df = load_data()
 
 # ─────────────────────────────────────────────────────────────
-# Interactive Map
+# Country Filter Dropdown
 # ─────────────────────────────────────────────────────────────
-st.subheader("📍 Global USV Distribution Map")
+st.sidebar.header("🔎 Filter")
+countries = df["Country"].sort_values().unique().tolist()
+selected_country = st.sidebar.selectbox("Select a country to focus", ["🌍 Show All"] + countries)
 
-map = pdk.Deck(
+if selected_country != "🌍 Show All":
+    df_filtered = df[df["Country"] == selected_country]
+else:
+    df_filtered = df
+
+# Center map based on selection
+if selected_country != "🌍 Show All":
+    lat = df_filtered["Latitude"].mean()
+    lon = df_filtered["Longitude"].mean()
+    zoom = 3.5
+else:
+    lat, lon, zoom = 10, 0, 1.3
+
+# ─────────────────────────────────────────────────────────────
+# Map Display
+# ─────────────────────────────────────────────────────────────
+st.subheader("🗺️ Interactive USV Map")
+
+st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
-        latitude=10,
-        longitude=0,
-        zoom=1.2,
+        latitude=lat,
+        longitude=lon,
+        zoom=zoom,
         pitch=0,
     ),
     layers=[
         pdk.Layer(
             "ScatterplotLayer",
-            data=df,
+            data=df_filtered,
             get_position='[Longitude, Latitude]',
-            get_fill_color='[0, 105, 255, 180]',
             get_radius=50000,
-            pickable=True,
+            get_fill_color='[0, 100, 250, 160]',
+            pickable=True
         )
     ],
     tooltip={
         "html": """
-        <b>{Name}</b><br>
-        🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-        🌍 <b>Country:</b> {Country}<br>
-        📏 <b>Length:</b> {`Max. Length (m)`} m
+            <b>{Name}</b><br>
+            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+            🌍 <b>Country:</b> {Country}<br>
+            📏 <b>Length:</b> {`Max. Length (m)`} m
         """,
         "style": {
             "backgroundColor": "white",
@@ -79,10 +96,23 @@ map = pdk.Deck(
             "fontSize": "14px"
         }
     }
-)
+))
 
-st.pydeck_chart(map)
+# ─────────────────────────────────────────────────────────────
+# Country-Specific Table & Selector
+# ─────────────────────────────────────────────────────────────
+if selected_country != "🌍 Show All":
+    st.subheader(f"📋 USVs based in {selected_country}")
+    usv_names = df_filtered["Name"].unique().tolist()
+    selected_usv = st.selectbox("Jump to a specific USV", ["—"] + usv_names)
+
+    if selected_usv != "—":
+        usv_row = df_filtered[df_filtered["Name"] == selected_usv].iloc[0]
+        st.success(f"Centered on **{selected_usv}** – {usv_row['Manufacturer']}, {usv_row['Max. Length (m)']} m")
+        st.map(pd.DataFrame([usv_row], columns=["Latitude", "Longitude"]))
+    
+    st.dataframe(df_filtered[["Name", "Manufacturer", "Max. Length (m)"]].reset_index(drop=True))
 
 # Footer
 st.markdown("---")
-st.caption("🛰️ Last updated as part of Joana Paiva's MSc Hydrography Dissertation – University of Plymouth.")
+st.caption("📍 MSc Dissertation Tool by Joana Paiva – University of Plymouth")
