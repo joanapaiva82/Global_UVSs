@@ -72,7 +72,7 @@ def apply_jitter(df, jitter_amount=0.8):
 
 df = apply_jitter(df_raw)
 
-# Add vessel icon
+# Add USV icon
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
@@ -129,38 +129,41 @@ map_lon = df_table["Longitude"].mean()
 map_zoom = 1.2 if should_zoom_out else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Display Map
+# Display Map with Dynamic Key
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
-st.pydeck_chart(pdk.Deck(
-    map_style="mapbox://styles/mapbox/light-v9",
-    initial_view_state=pdk.ViewState(
-        latitude=map_lat,
-        longitude=map_lon,
-        zoom=map_zoom,
-        pitch=0,
+st.pydeck_chart(
+    pdk.Deck(
+        map_style="mapbox://styles/mapbox/light-v9",
+        initial_view_state=pdk.ViewState(
+            latitude=map_lat,
+            longitude=map_lon,
+            zoom=map_zoom,
+            pitch=0,
+        ),
+        layers=[
+            pdk.Layer(
+                "IconLayer",
+                data=df_table,
+                get_icon="icon_data",
+                get_position='[Longitude, Latitude]',
+                size_scale=15,
+                get_size=4,
+                pickable=True
+            )
+        ],
+        tooltip={
+            "html": """
+            <b>{Name}</b><br>
+            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+            🌍 <b>Country:</b> {Country}<br>
+            📏 <b>Length:</b> {Max. Length (m)} m
+            """,
+            "style": {"backgroundColor": "white", "color": "black"}
+        }
     ),
-    layers=[
-        pdk.Layer(
-            "IconLayer",
-            data=df_table,
-            get_icon="icon_data",
-            get_position='[Longitude, Latitude]',
-            size_scale=15,
-            get_size=4,
-            pickable=True
-        )
-    ],
-    tooltip={
-        "html": """
-        <b>{Name}</b><br>
-        🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-        🌍 <b>Country:</b> {Country}<br>
-        📏 <b>Length:</b> {Max. Length (m)} m
-        """,
-        "style": {"backgroundColor": "white", "color": "black"}
-    }
-))
+    key="map_zoom_all" if should_zoom_out else "map_default"
+)
 
 # ─────────────────────────────────────────────────────────────
 # Table
