@@ -4,14 +4,14 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
-# Setup Session Flags (no rerun logic at top)
+# Session State Initialization
 # ─────────────────────────────────────────────────────────────
 if "selected_country" not in st.session_state:
     st.session_state.selected_country = "🌍 Show All"
-if "zoom_override" not in st.session_state:
-    st.session_state.zoom_override = False
-if "clear_filter_clicked" not in st.session_state:
-    st.session_state.clear_filter_clicked = False
+if "zoom_now" not in st.session_state:
+    st.session_state.zoom_now = True  # always zoom after load
+if "reset_country" not in st.session_state:
+    st.session_state.reset_country = False
 
 # ─────────────────────────────────────────────────────────────
 # Page Setup
@@ -20,7 +20,7 @@ st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Manufacturer Section
+# Manufacturer Notice (FULL TEXT)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
@@ -40,7 +40,7 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Disclaimer
+# Disclaimer (FULL TEXT)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Disclaimer (click to expand)"):
     st.markdown("""
@@ -54,7 +54,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load & Jitter Data
+# Load + Jitter Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -84,41 +84,44 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Filter Dropdown + Buttons (No crash)
+# Country Filter + Buttons
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
 
-# Use manual index override when Clear Filter clicked
-dropdown_index = 0 if st.session_state.clear_filter_clicked else countries.index(st.session_state.selected_country)
-selected = st.selectbox("Select a country", countries, index=dropdown_index)
+# Reset dropdown index if Clear Filter clicked
+if st.session_state.reset_country:
+    dropdown_index = 0
+    st.session_state.reset_country = False
+else:
+    dropdown_index = countries.index(st.session_state.selected_country)
 
-# Update session state
-st.session_state.selected_country = selected
+selected_country = st.selectbox("Select a country", countries, index=dropdown_index)
+st.session_state.selected_country = selected_country
 
-# Button logic
+# Buttons
 col1, col2 = st.columns([0.15, 0.15])
 with col1:
     if st.button("🔍 Zoom to All"):
-        st.session_state.zoom_override = True
+        st.session_state.zoom_now = True  # trigger zoom to selected
 with col2:
     if st.button("🧹 Clear Filter"):
-        st.session_state.clear_filter_clicked = True
-        st.session_state.zoom_override = True
-
-# Reset clear flag after it's used once
-if st.session_state.clear_filter_clicked:
-    st.session_state.clear_filter_clicked = False
+        st.session_state.selected_country = "🌍 Show All"
+        st.session_state.reset_country = True
+        st.session_state.zoom_now = True
 
 # ─────────────────────────────────────────────────────────────
-# Filter + Zoom Logic
+# Apply Filter and Determine Zoom
 # ─────────────────────────────────────────────────────────────
-df_filtered = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
-zoom_now = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
-map_lat = df_filtered["Latitude"].mean()
-map_lon = df_filtered["Longitude"].mean()
-map_zoom = 1.2 if zoom_now else 3.5
+filtered_df = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
+
+map_lat = filtered_df["Latitude"].mean()
+map_lon = filtered_df["Longitude"].mean()
+map_zoom = 1.2 if st.session_state.zoom_now else 3.5
+
+# Reset zoom trigger immediately after use
+st.session_state.zoom_now = False
 
 # ─────────────────────────────────────────────────────────────
 # Map Display
@@ -135,7 +138,7 @@ st.pydeck_chart(
         layers=[
             pdk.Layer(
                 "IconLayer",
-                data=df_filtered,
+                data=filtered_df,
                 get_icon="icon_data",
                 get_position='[Longitude, Latitude]',
                 size_scale=15,
@@ -145,25 +148,22 @@ st.pydeck_chart(
         ],
         tooltip={
             "html": """
-            <b>{Name}</b><br>
-            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-            🌍 <b>Country:</b> {Country}<br>
-            📏 <b>Length:</b> {Max. Length (m)} m
+                <b>{Name}</b><br>
+                🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+                🌍 <b>Country:</b> {Country}<br>
+                📏 <b>Length:</b> {Max. Length (m)} m
             """,
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="zoom_all" if zoom_now else "map_normal"
+    key=f"map_{selected_country.replace(' ', '_')}"
 )
 
-# Reset zoom override cleanly after map render
-st.session_state.zoom_override = False
-
 # ─────────────────────────────────────────────────────────────
-# Table
+# Table View
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
-st.dataframe(df_filtered[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
+st.dataframe(filtered_df[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
