@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
-from geopy.geocoders import Nominatim
 import numpy as np
-import time
 
 # ─────────────────────────────────────────────────────────────
 # Page Setup
@@ -31,45 +29,60 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Geocode + Country Fix
+# Load CSV and Clean Text
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
-def load_data_and_centroids():
+def load_clean_data():
     try:
-        df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
+        df = pd.read_csv("Global_USVs_Linkedin_CLEANED.csv", encoding="utf-8")
     except:
-        df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
+        df = pd.read_csv("Global_USVs_Linkedin_CLEANED.csv", encoding="latin1")
 
-    # Fix common country name mismatches
-    country_fix = {
+    # Clean non-ASCII characters
+    for col in df.select_dtypes(include='object').columns:
+        df[col] = df[col].astype(str).str.encode('ascii', errors='ignore').str.decode('ascii')
+
+    # Fix country naming
+    df["Country"] = df["Country"].replace({
         "UK": "United Kingdom",
         "USA": "United States",
         "UAE": "United Arab Emirates",
-        "Russia": "Russian Federation"
-    }
-    df["Country"] = df["Country"].replace(country_fix)
+        "Russia": "Russian Federation",
+        "Europe": "France"  # Or manually assign as needed
+    })
 
-    geolocator = Nominatim(user_agent="usv_geocoder")
-    coords = {}
-    for country in df["Country"].dropna().unique():
-        try:
-            loc = geolocator.geocode(country)
-            coords[country] = (loc.latitude, loc.longitude) if loc else (None, None)
-            time.sleep(1)
-        except:
-            coords[country] = (None, None)
+    return df
 
-    coord_df = pd.DataFrame.from_dict(coords, orient="index", columns=["Latitude", "Longitude"])
-    coord_df = coord_df.reset_index().rename(columns={"index": "Country"})
-    df = df.merge(coord_df, on="Country", how="left")
-
-    centroids = {row["Country"]: (row["Latitude"], row["Longitude"]) for _, row in coord_df.iterrows() if pd.notnull(row["Latitude"])}
-    return df.dropna(subset=["Latitude", "Longitude"]), centroids
-
-df_raw, country_centroids = load_data_and_centroids()
+df = load_clean_data()
 
 # ─────────────────────────────────────────────────────────────
-# Apply jitter using country centroid (fixed logic)
+# Use hardcoded centroids to prevent geocoding errors
+# ─────────────────────────────────────────────────────────────
+country_centroids = {
+    "Australia": (-25.2744, 133.7751),
+    "Brazil": (-14.2350, -51.9253),
+    "Canada": (56.1304, -106.3468),
+    "China": (35.8617, 104.1954),
+    "France": (46.2276, 2.2137),
+    "Ireland": (53.1424, -7.6921),
+    "Israel": (31.0461, 34.8516),
+    "Netherlands": (52.1326, 5.2913),
+    "Norway": (60.4720, 8.4689),
+    "Sweden": (60.1282, 18.6435),
+    "Turkey": (38.9637, 35.2433),
+    "United Kingdom": (55.3781, -3.4360),
+    "United States": (37.0902, -95.7129),
+    "United Arab Emirates": (23.4241, 53.8478),
+    "Russian Federation": (61.5240, 105.3188)
+}
+
+# Add lat/lon based on country
+df["Latitude"] = df["Country"].map(lambda c: country_centroids.get(c, (None, None))[0])
+df["Longitude"] = df["Country"].map(lambda c: country_centroids.get(c, (None, None))[1])
+df = df.dropna(subset=["Latitude", "Longitude"])
+
+# ─────────────────────────────────────────────────────────────
+# Jitter: spread vessels around country centroid
 # ─────────────────────────────────────────────────────────────
 def jitter_data(df, jitter=1.5):
     df = df.copy()
@@ -91,10 +104,10 @@ def jitter_data(df, jitter=1.5):
     df["Longitude"] = lon_list
     return df
 
-df = jitter_data(df_raw)
+df = jitter_data(df)
 
 # ─────────────────────────────────────────────────────────────
-# Add icon to each USV
+# Add vessel icon
 # ─────────────────────────────────────────────────────────────
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
@@ -105,7 +118,7 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Country filter dropdown
+# Country Filter Dropdown
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Select a country")
 countries = sorted(df["Country"].unique())
@@ -120,9 +133,9 @@ else:
     map_lat, map_lon, map_zoom = 10, 0, 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map: All USVs plotted
+# Pydeck Map
 # ─────────────────────────────────────────────────────────────
-st.subheader("🗺️ USV Map (all countries)")
+st.subheader("🗺️ USV Map")
 st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
@@ -154,15 +167,10 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# USV Table (filtered)
+# Data Table
 # ─────────────────────────────────────────────────────────────
-if selected_country != "🌍 Show All":
-    st.subheader(f"📋 USVs in {selected_country}")
-else:
-    st.subheader("📋 All USVs")
-
+st.subheader("📋 Filtered USV List")
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
-# Footer
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
