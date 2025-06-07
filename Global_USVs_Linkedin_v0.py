@@ -10,6 +10,22 @@ st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 st.markdown("Visualize Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical survey — by country and manufacturer.")
 
+with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
+    st.markdown("""
+    Your USV platform may already be listed here based on publicly available information.
+
+    To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute additional details such as:
+
+    - Technical specifications  
+    - Autonomy level and certifications  
+    - Sensor suite and power systems  
+    - Operational use cases
+
+    📬 Please contact me at **[joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)**  
+    I will share a short form for you to review and update the information.
+
+    This initiative supports my **MSc Hydrography dissertation** at the **University of Plymouth** and aims to strengthen industry visibility across academic and technical domains.
+    """)
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
 # ─────────────────────────────────────────────────────────────
