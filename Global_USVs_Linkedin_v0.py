@@ -3,27 +3,22 @@ import pandas as pd
 import pydeck as pdk
 import numpy as np
 
+# ─────────────────────────────────────────────────────────────
+# Page Setup
+# ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Initialize session_state
+# Session State Init
 # ─────────────────────────────────────────────────────────────
 for key, default in {
     "selected_country": "🌍 Show All",
     "zoom_override": False,
-    "rerun_trigger": False,
     "clear_filter_trigger": False
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
-
-# ─────────────────────────────────────────────────────────────
-# Safe rerun if clear_filter was triggered
-# ─────────────────────────────────────────────────────────────
-if st.session_state.clear_filter_trigger:
-    st.session_state.clear_filter_trigger = False
-    st.experimental_rerun()
 
 # ─────────────────────────────────────────────────────────────
 # Manufacturer Banner
@@ -32,10 +27,10 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
     st.markdown("""
     Your USV platform may already be listed here based on publicly available information.
 
-    To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute details such as:
+    To ensure your technology is **accurately and fairly represented**, I kindly invite you to confirm or contribute additional details such as:
     - Specifications
-    - Sensor suite
-    - Use cases and certifications
+    - Autonomy & certification
+    - Use cases
 
     📬 [joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)
     """)
@@ -49,11 +44,11 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and jitter data
+# Load and Jitter Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Global_USVs_Linkedin.csv")
+    df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     return df.dropna(subset=["Latitude", "Longitude"])
 
 def apply_jitter(df, jitter=0.8):
@@ -80,9 +75,17 @@ df["icon_data"] = [{
 # Filters + Buttons
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
-
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
-selected = st.selectbox("Select a country", countries, index=countries.index(st.session_state.selected_country), key="selected_country")
+
+# Reset dropdown index if Clear Filter triggered
+selected_index = 0 if st.session_state.clear_filter_trigger else countries.index(st.session_state.selected_country)
+
+selected_country = st.selectbox("Select a country", countries, index=selected_index)
+st.session_state.selected_country = selected_country
+
+# Clear flag after use
+if st.session_state.clear_filter_trigger:
+    st.session_state.clear_filter_trigger = False
 
 btn1, btn2 = st.columns([0.15, 0.15])
 with btn1:
@@ -90,11 +93,9 @@ with btn1:
         st.session_state.zoom_override = True
 with btn2:
     if st.button("🧹 Clear Filter"):
-        st.session_state.update({
-    "selected_country": "🌍 Show All"
-})
+        st.session_state.clear_filter_trigger = True
         st.session_state.zoom_override = True
-        st.session_state.clear_filter_trigger = True  # trigger full rerun
+        st.experimental_rerun()
 
 # ─────────────────────────────────────────────────────────────
 # Filter data + determine zoom
@@ -142,7 +143,7 @@ st.pydeck_chart(
     key="map_zoom_all" if zoom_to_all else "map_normal"
 )
 
-# Reset zoom after render
+# Reset zoom flag after render
 if st.session_state.zoom_override:
     st.session_state.zoom_override = False
 
