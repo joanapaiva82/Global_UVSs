@@ -10,7 +10,7 @@ import time
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
-st.markdown("Visualize Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical surveys – by country and manufacturer.")
+st.markdown("Visualize Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical survey — by country and manufacturer.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
@@ -31,7 +31,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and geocode + centroids
+# Load + Geocode + Country Fix
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data_and_centroids():
@@ -40,6 +40,16 @@ def load_data_and_centroids():
     except:
         df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
 
+    # Fix common geocoding mismatches
+    country_fix = {
+        "UK": "United Kingdom",
+        "USA": "United States",
+        "UAE": "United Arab Emirates",
+        "Russia": "Russian Federation"
+    }
+    df["Country"] = df["Country"].replace(country_fix)
+
+    # Geocode country centroids
     geolocator = Nominatim(user_agent="usv_geocoder")
     coords = {}
     for country in df["Country"].dropna().unique():
@@ -50,6 +60,8 @@ def load_data_and_centroids():
         except:
             coords[country] = (None, None)
 
+    # Remove any existing coordinates to avoid conflict
+    df = df.drop(columns=["Latitude", "Longitude"], errors="ignore")
     df["Latitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[0])
     df["Longitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[1])
     centroids = {c: coords[c] for c in df["Country"].unique() if coords[c][0] is not None}
@@ -58,9 +70,9 @@ def load_data_and_centroids():
 df_raw, country_centroids = load_data_and_centroids()
 
 # ─────────────────────────────────────────────────────────────
-# Apply jitter to plot icons away from country center
+# Apply jitter so icons don't overlap
 # ─────────────────────────────────────────────────────────────
-def jitter_data(df, jitter=1.5):  # degrees of separation
+def jitter_data(df, jitter=1.5):  # degrees of spread
     df = df.copy()
     lat_list, lon_list = [], []
     grouped = df.groupby("Country")
@@ -81,9 +93,9 @@ def jitter_data(df, jitter=1.5):  # degrees of separation
 df = jitter_data(df_raw)
 
 # ─────────────────────────────────────────────────────────────
-# Add USV icon (same for all)
+# Add USV icon to each row
 # ─────────────────────────────────────────────────────────────
-icon_url = "https://cdn-icons-png.flaticon.com/512/1995/1995471.png"  # Boat icon
+icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_USVs/main/usv_icon.png"  # ← Replace with your hosted icon
 df["icon_data"] = [{
     "url": icon_url,
     "width": 512,
@@ -92,7 +104,7 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Country selector
+# Country Selector (filters table and zooms only)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Select a country")
 countries = sorted(df["Country"].unique())
@@ -108,9 +120,10 @@ else:
     map_zoom = 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map Display (global icons always shown)
+# Map: All USVs always shown
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map (all countries)")
+
 st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
@@ -142,7 +155,7 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Table of filtered USVs
+# USV Table (filtered by country)
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs in {selected_country}")
