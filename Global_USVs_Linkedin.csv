@@ -5,79 +5,79 @@ Alpha Mi Survey,Alpha Survey Tech,China,0.9
 Alpha Mi USV,Alpha Survey Tech,China,0.9
 Alpha ARK,Alpha-GEO,China,1.18
 Alpha ARK-S,Alpha-GEO,China,0.75
-ULAQ Armed USV,Ares Shipyard & Meteksan,Turkey,11
+ULAQ Armed USV,Ares Shipyard & Meteksan,Turkey,11.0
 Albatros (S/T),Aselsan,Turkey,7.2
-ARCIMS,Atlas Elektronik UK,United Kingdom,11
-ARCIMS USV (Atlas Remote Combined Influence Minesweeping System),Atlas Elektronik UK,United Kingdom,11
+ARCIMS,Atlas Elektronik UK,United Kingdom,11.0
+ARCIMS USV(Atlas Remote Combined Influence Minesweeping System),Atlas Elektronik UK,United Kingdom,11.0
 AutoNaut,"AutoNaut Ltd (Seiche, UK)",United Kingdom,3.5
 CEE-USV,CEE HydroSystems,Australia,1.7
 Apache 3,CHC Navigation (CHCNAV),China,1.05
 Apache 4,CHC Navigation (CHCNAV),China,1.2
 Apache 6,CHC Navigation (CHCNAV),China,1.8
 Kingfisher USV,Clearpath Robotics,Canada,1.2
-JARI USV (Multi-purpose Combat Boat),CSSC Huangpu Wenchong,China,15
-EGS USV “Fremantle 01”,"EGS Survey Pty (built by Steber/Manor, AU)",Australia,12
-Seagull USV,Elbit Systems,Israel,12
+JARI USV(Multi-purpose Combat Boat),CSSC Huangpu Wenchong,China,15.0
+EGS USV Fremantle 01,"EGS Survey Pty (built by Steber/Manor, AU)",Australia,12.0
+Seagull USV,Elbit Systems,Israel,12.0
 Inspector 125,Exail (ECA Group),France,12.3
 DriX (H-8),Exail (iXblue),France,7.7
-DriX H-9,Exail (iXblue),France,9
+DriX H-9,Exail (iXblue),France,9.0
 DriX O-16,Exail (iXblue),France,15.75
-Fugro Maali,Fugro,Australia,12
-Fugro Vaquita,Fugro,Europe,12
-REAV-60,HydroSurv UK,United Kingdom,6
+Fugro Maali,Fugro,Australia,12.0
+Fugro Vaquita,Fugro,Europe,12.0
+REAV-60,HydroSurv UK,United Kingdom,6.0
 HydroSurv REAV-28,HydroSurv UK,United Kingdom,2.8
 REAV-28 USV,HydroSurv UK,United Kingdom,2.8
-Sounder USV,Kongsberg Maritime,Norway,8
+Sounder USV,Kongsberg Maritime,Norway,8.0
 C-Enduro,L3Harris ASV,United States,4.8
-C-Worker 15,L3Harris ASV (UK),United Kingdom,15
+C-Worker 15,L3Harris ASV (UK),United Kingdom,15.0
 C-Worker 5,L3Harris ASV (UK),United Kingdom,5.5
-Sea Hunter (MDUSV),Leidos / Vigor (DARPA),United States,40
+Sea Hunter (MDUSV),Leidos / Vigor (DARPA),United States,40.0
 Wave Glider SV3,Liquid Robotics (Boeing),United States,3.05
-Wave Glider SV3,Liquid Robotics (Boeing),United States,3
-Wave Glider SV3,Liquid Robotics (Boeing),United States,3.05
+Wave Glider SV3,Liquid Robotics (Boeing),United States,3.0
+Wave GliderSV3,Liquid Robotics (Boeing),United States,3.05
 WAM-V 16,Marine Advanced Robotics (OPT),United States,5.3
 WAM-V 20,Marine Advanced Robotics (OPT),United States,6.1
 Mariner USV,Maritime Robotics,Norway,
-Otter USV,Maritime Robotics,Norway,2
+Otter USV,Maritime Robotics,Norway,2.0
 Devil Ray T38,MARTAC (Maritime Tactical Systems),United States,11.1
-"Armada Fleet (A8, A15, A78)",Ocean Infinity,United States,78
-Armada A78,Ocean Infinity,United States,78
+"Armada Fleet (A8, A15, A78)",Ocean Infinity,United States,78.0
+Armada A78,Ocean Infinity,United States,78.0
 HydroBoat 1200 USV,OceanAlpha,China,1.2
 HydroBoat 1500 USV,OceanAlpha,China,1.5
 M40 Autonomous USV,OceanAlpha Co.,China,3.5
-SE40 Water Sampling USV,OceanAlpha Co.,China,2
-SL40 Survey USV,OceanAlpha Co.,China,2
+SE40 Water Sampling USV,OceanAlpha Co.,China,2.0
+SL40 Survey USV,OceanAlpha Co.,China,2.0
 Bluebottle,Ocius Technology,Australia,5.6
-Bluebottle USV (Beth-class),Ocius Technology,Australia,6.8
+Bluebottle USV(Beth-class),Ocius Technology,Australia,6.8
 DataXplorer,Open Ocean Robotics,Canada,4.8
-Protector USV,Rafael Advanced Defense Systems,Israel,11
+Protector USV,Rafael Advanced Defense Systems,Israel,11.0
 Reach Remote 1,Reach Subsea / Kongsberg,Norway,5.5
-Saildrone Explorer,Saildrone Inc.,United States,5
-Saildrone Surveyor,Saildrone Inc.,United States,13
-Saildrone Voyager,Saildrone Inc.,United States,6
+Saildrone Explorer,Saildrone Inc.,United States,5.0
+Saildrone Surveyor,Saildrone Inc.,United States,13.0
+Saildrone Voyager,Saildrone Inc.,United States,6.0
 HydroBoat 1200 USV,SatLab Geosolutions AB,Sweden,1.229
 HydroBoat 1500 USV,SatLab Geosolutions AB,Sweden,1.5
 HydroBoat 990 USV,SatLab Geosolutions AB,Sweden,1.035
 HydroCat-550,"Seafloor Systems, Inc.",United States,5.5
 SEA-KIT X-Class,SEA-KIT International,United Kingdom,11.75
-SEA-KIT X-class USV (e.g. Maxlimer),SEA-KIT International,United Kingdom,11.75
+SEA-KIT X-class USV(e.g.Maxlimer),SEA-KIT International,United Kingdom,11.75
 SR-Surveyor M1.8,SeaRobotics Corporation,United States,1.8
 SP-48,SeaTrac Systems,United States,4.8
-Marlin USV,Sefine/TAIS Shipyards + Aselsan,Turkey,15
+Marlin USV,Sefine/TAIS Shipyards + Aselsan,Turkey,15.0
 Poseidon SU30,South Surveying & Mapping Co.,China,1.205
-CAT-Surveyor,Subsea Tech,France,3
+CAT-Surveyor,Subsea Tech,France,3.0
 SeaCAT,Subsea Tech,France,3.6
 Z-Boat 1250,Teledyne Oceanscience,United States,1.25
 Z-Boat 1800,Teledyne Oceanscience,United States,1.8
 Z-Boat 1800RP,Teledyne Oceanscience,United States,1.8
-Common USV (CUSV),Textron Systems,United States,12
+Common USV (CUSV),Textron Systems,United States,12.0
 CUSV (Fleet-class),Textron Systems,United States,11.9
-TSUNAMI USV (24–28ft class),Textron Systems,United States,8.5
+TSUNAMI USV (2428ft class),Textron Systems,United States,8.5
 Halcyon USV,Thales UK (with L3Harris ASV),United Kingdom,11.5
-USV Tupan,TideWise,Brazil,5
-24m USV (AiP from Lloyd’s),TideWise,Brazil,24
-US Navy LUSV,U.S. Navy / Multiple Vendors,United States,91
+USV Tupan,TideWise,Brazil,5.0
+24m USV (AiP from Lloyds),TideWise,Brazil,24.0
+US Navy LUSV,U.S. Navy / Multiple Vendors,United States,91.0
 XO-450,XOCEAN,Ireland,4.5
 XO-580,XOCEAN,Ireland,5.8
-Oceanus 12,"Zero USV (Manor Marine, UK)",United Kingdom,12
-Blue Shadow,Fugro,Netherlands,9
+Oceanus12,"ZeroUSV (Manor Marine, UK)",United Kingdom,12.0
+Blue Shadow,Fugro,Netherlands,9.0
