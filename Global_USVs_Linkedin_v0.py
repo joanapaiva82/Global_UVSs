@@ -4,17 +4,18 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
-# Session Flags (Safe Init)
+# Unified Session State Init
 # ─────────────────────────────────────────────────────────────
-for key, default in {
+session_defaults = {
     "selected_country": "🌍 Show All",
     "zoom_override": False,
     "reset_dropdown": False
-}.items():
+}
+for key, default in session_defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# Only Clear Filter should rerun the app
+# Rerun only if Clear Filter triggered
 if st.session_state.reset_dropdown:
     st.session_state.reset_dropdown = False
     st.experimental_rerun()
@@ -26,7 +27,7 @@ st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Manufacturer Banner (Preserved)
+# Manufacturer Message (Full)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
@@ -46,7 +47,7 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Disclaimer (Preserved)
+# Disclaimer (Full)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Disclaimer (click to expand)"):
     st.markdown("""
@@ -68,18 +69,18 @@ def load_data():
     return df.dropna(subset=["Latitude", "Longitude"])
 
 def apply_jitter(df, jitter=0.8):
-    output = []
+    out = []
     for country, group in df.groupby("Country"):
-        n = len(group)
-        if n == 1:
-            output.append(group)
+        count = len(group)
+        if count == 1:
+            out.append(group)
             continue
-        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
-        group = group.copy()
-        group["Latitude"] += jitter * np.sin(angles)
-        group["Longitude"] += jitter * np.cos(angles)
-        output.append(group)
-    return pd.concat(output, ignore_index=True)
+        angles = np.linspace(0, 2 * np.pi, count, endpoint=False)
+        jittered = group.copy()
+        jittered["Latitude"] += jitter * np.sin(angles)
+        jittered["Longitude"] += jitter * np.cos(angles)
+        out.append(jittered)
+    return pd.concat(out, ignore_index=True)
 
 df = apply_jitter(load_data())
 df["icon_data"] = [{
@@ -90,16 +91,14 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Filter Controls (No assignment conflicts)
+# Filter Dropdown + Buttons
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
-
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
-dropdown_index = 0 if st.session_state.selected_country == "🌍 Show All" else countries.index(st.session_state.selected_country)
-selected_country = st.selectbox("Select a country", countries, index=dropdown_index)
-st.session_state.selected_country = selected_country
+index = countries.index(st.session_state.selected_country)
+selected = st.selectbox("Select a country", countries, index=index)
+st.session_state.selected_country = selected
 
-# Buttons
 col1, col2 = st.columns([0.15, 0.15])
 with col1:
     if st.button("🔍 Zoom to All"):
@@ -111,13 +110,12 @@ with col2:
         st.session_state.reset_dropdown = True
 
 # ─────────────────────────────────────────────────────────────
-# Filter Data + Zoom View Logic
+# Filter Data and Zoom Logic
 # ─────────────────────────────────────────────────────────────
-df_filtered = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
-zoom_now = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
-
-map_lat = df_filtered["Latitude"].mean()
-map_lon = df_filtered["Longitude"].mean()
+filtered_df = df if selected == "🌍 Show All" else df[df["Country"] == selected]
+zoom_now = st.session_state.zoom_override or selected == "🌍 Show All"
+map_lat = filtered_df["Latitude"].mean()
+map_lon = filtered_df["Longitude"].mean()
 map_zoom = 1.2 if zoom_now else 3.5
 
 # ─────────────────────────────────────────────────────────────
@@ -135,7 +133,7 @@ st.pydeck_chart(
         layers=[
             pdk.Layer(
                 "IconLayer",
-                data=df_filtered,
+                data=filtered_df,
                 get_icon="icon_data",
                 get_position='[Longitude, Latitude]',
                 size_scale=15,
@@ -145,26 +143,25 @@ st.pydeck_chart(
         ],
         tooltip={
             "html": """
-            <b>{Name}</b><br>
-            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-            🌍 <b>Country:</b> {Country}<br>
-            📏 <b>Length:</b> {Max. Length (m)} m
+                <b>{Name}</b><br>
+                🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+                🌍 <b>Country:</b> {Country}<br>
+                📏 <b>Length:</b> {Max. Length (m)} m
             """,
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="map_zoom_all" if zoom_now else "map_normal"
+    key="zoom_reset" if zoom_now else "map_static"
 )
 
-# Reset zoom flag (but don’t trigger rerun)
-if st.session_state.zoom_override:
-    st.session_state.zoom_override = False
+# Reset zoom flag after use (safe)
+st.session_state.zoom_override = False
 
 # ─────────────────────────────────────────────────────────────
-# Table View
+# Table Display
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
-st.dataframe(df_filtered[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
+st.dataframe(filtered_df[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
