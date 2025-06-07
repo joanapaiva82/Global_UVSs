@@ -5,12 +5,11 @@ from geopy.geocoders import Nominatim
 import time
 
 # ─────────────────────────────────────────────────────────────
-# Config
+# Page Config
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs Map", layout="wide")
-
-st.title("🌍 Global Survey USVs")
-st.markdown("An interactive map of **Uncrewed Surface Vessels (USVs)** used for hydrographic, geophysical, and environmental survey.")
+st.title("🌍 Global Survey USVs Map")
+st.markdown("Explore the worldwide distribution of Uncrewed Surface Vessels (USVs) used for hydrographic, geophysical, and environmental survey operations.")
 
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
@@ -31,43 +30,39 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and Geocode
+# Load Data + Add Coordinates if Missing
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
-def load_data_and_coords():
-    # Load CSV
+def load_data():
     try:
         df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     except:
         df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
 
-    # Check for lat/lon
     if "Latitude" not in df.columns or "Longitude" not in df.columns:
-        geolocator = Nominatim(user_agent="usv_map_geo")
+        geolocator = Nominatim(user_agent="usv_geocoder")
         coords = {}
         for country in df["Country"].dropna().unique():
             try:
                 loc = geolocator.geocode(country)
                 coords[country] = (loc.latitude, loc.longitude) if loc else (None, None)
-                time.sleep(1)  # be respectful to Nominatim
+                time.sleep(1)
             except:
                 coords[country] = (None, None)
         df["Latitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[0])
         df["Longitude"] = df["Country"].map(lambda x: coords.get(x, (None, None))[1])
 
-    df = df.dropna(subset=["Latitude", "Longitude"])
-    return df
+    return df.dropna(subset=["Latitude", "Longitude"])
 
-df = load_data_and_coords()
+df = load_data()
 
 # ─────────────────────────────────────────────────────────────
-# Sidebar filters
+# Sidebar Country Filter
 # ─────────────────────────────────────────────────────────────
 st.sidebar.header("🔎 Filter")
 countries = sorted(df["Country"].unique())
 selected_country = st.sidebar.selectbox("Select a country", ["🌍 Show All"] + countries)
 
-# Filter dataset
 if selected_country != "🌍 Show All":
     df_filtered = df[df["Country"] == selected_country]
     map_lat = df_filtered["Latitude"].mean()
@@ -81,7 +76,6 @@ else:
 # Map
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
-
 st.pydeck_chart(pdk.Deck(
     map_style="mapbox://styles/mapbox/light-v9",
     initial_view_state=pdk.ViewState(
@@ -95,9 +89,9 @@ st.pydeck_chart(pdk.Deck(
             "ScatterplotLayer",
             data=df_filtered,
             get_position='[Longitude, Latitude]',
-            get_fill_color='[30, 144, 255, 180]',
+            get_fill_color='[0, 100, 255, 180]',
             get_radius=50000,
-            pickable=True
+            pickable=True,
         )
     ],
     tooltip={
@@ -105,26 +99,30 @@ st.pydeck_chart(pdk.Deck(
         <b>{Name}</b><br>
         🏭 <b>Manufacturer:</b> {Manufacturer}<br>
         🌍 <b>Country:</b> {Country}<br>
-        📏 <b>Length:</b> {`Max. Length (m)`} m
+        📏 <b>Length:</b> {Max. Length (m)} m
         """,
         "style": {"backgroundColor": "white", "color": "black"}
     }
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Table and Jump-to-USV
+# Table and Jump to USV
 # ─────────────────────────────────────────────────────────────
 if selected_country != "🌍 Show All":
     st.subheader(f"📋 USVs in {selected_country}")
     usv_names = df_filtered["Name"].unique().tolist()
     selected_usv = st.selectbox("Jump to USV", ["—"] + usv_names)
+
     if selected_usv != "—":
         usv_row = df_filtered[df_filtered["Name"] == selected_usv].iloc[0]
         st.success(f"Focusing on **{usv_row['Name']}** – {usv_row['Manufacturer']}")
-        st.map(pd.DataFrame([usv_row], columns=["Latitude", "Longitude"]))
+        st.map(pd.DataFrame({
+            "Latitude": [usv_row["Latitude"]],
+            "Longitude": [usv_row["Longitude"]]
+        }))
 
     st.dataframe(df_filtered[["Name", "Manufacturer", "Max. Length (m)"]])
 
 # Footer
 st.markdown("---")
-st.caption("📍 Joana Paiva | MSc Hydrography – University of Plymouth")
+st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
