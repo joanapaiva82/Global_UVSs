@@ -4,10 +4,10 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
-# Handle rerun triggered by "Clear Filter"
+# Safe rerun handling
 # ─────────────────────────────────────────────────────────────
-if "rerun" in st.session_state and st.session_state.rerun:
-    st.session_state.rerun = False
+if "rerun_trigger" in st.session_state and st.session_state.rerun_trigger:
+    st.session_state.rerun_trigger = False
     st.experimental_rerun()
 
 # ─────────────────────────────────────────────────────────────
@@ -93,8 +93,6 @@ selected_country = st.selectbox(
     index=(0 if st.session_state.selected_country == "🌍 Show All"
            else sorted(df["Country"].unique()).index(st.session_state.selected_country) + 1)
 )
-
-# Update session state with selection
 st.session_state.selected_country = selected_country
 
 # Buttons side-by-side
@@ -102,13 +100,11 @@ btn_col1, btn_col2 = st.columns([0.15, 0.15])
 with btn_col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
-
 with btn_col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
         st.session_state.zoom_override = True
-        st.session_state.rerun = True  # safe trigger
-        st.stop()  # pause execution until rerun happens
+        st.session_state.rerun_trigger = True
 
 # ─────────────────────────────────────────────────────────────
 # Filter and Map View
