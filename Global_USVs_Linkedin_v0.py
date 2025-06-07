@@ -34,9 +34,9 @@ with st.expander("📌 Disclaimer (click to expand)"):
 @st.cache_data
 def load_clean_data():
     try:
-        df = pd.read_csv("Global_USVs_Linkedin_CLEANED.csv", encoding="utf-8")
+        df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     except:
-        df = pd.read_csv("Global_USVs_Linkedin_CLEANED.csv", encoding="latin1")
+        df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
 
     # Clean non-ASCII characters
     for col in df.select_dtypes(include='object').columns:
