@@ -17,7 +17,7 @@ if "reset_country" not in st.session_state:
 # Page Setup
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
-st.title("🌍 Global Survey USVs Map")
+st.title("🌍 Global Catalogue of Commercial USVs")
 
 # ─────────────────────────────────────────────────────────────
 # Manufacturer Notice (FULL TEXT)
