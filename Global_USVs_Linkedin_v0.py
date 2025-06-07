@@ -9,14 +9,14 @@ import numpy as np
 if "selected_country" not in st.session_state:
     st.session_state.selected_country = "🌍 Show All"
 if "zoom_now" not in st.session_state:
-    st.session_state.zoom_now = True  # always zoom after load
+    st.session_state.zoom_now = True
 if "reset_country" not in st.session_state:
     st.session_state.reset_country = False
 
 # ─────────────────────────────────────────────────────────────
 # Page Setup
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Global Survey USVs", layout="wide")
+st.set_page_config(page_title="Global Catalogue of Commercial USVs", layout="wide")
 st.title("🌍 Global Catalogue of Commercial USVs")
 
 # ─────────────────────────────────────────────────────────────
@@ -30,10 +30,10 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
 
     If you represent a USV company, please reach out to me so I can share the preliminary data I’ve compiled about your platform. I kindly ask for your help to review and confirm the following:
 
-        - Technical specifications  
-        - Sensor configurations  
-        - Certifications and autonomy level  
-        - Typical use cases and deployment examples
+    – Technical specifications  
+    – Sensor configurations  
+    – Certifications and autonomy level  
+    – Typical use cases and deployment examples
 
     📬 Please email me at **[joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)**  
     I’ll send you a summary of the information I’ve compiled for your review.
@@ -54,26 +54,26 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Jitter Data
+# Load + Jitter Data (auto-refreshes every 60s)
 # ─────────────────────────────────────────────────────────────
-@st.cache_data
+@st.cache_data(ttl=60)
 def load_data():
     df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     return df.dropna(subset=["Latitude", "Longitude"])
 
 def apply_jitter(df, jitter=0.8):
-    out = []
+    output = []
     for country, group in df.groupby("Country"):
         n = len(group)
         if n == 1:
-            out.append(group)
+            output.append(group)
             continue
         angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
         jittered = group.copy()
         jittered["Latitude"] += jitter * np.sin(angles)
         jittered["Longitude"] += jitter * np.cos(angles)
-        out.append(jittered)
-    return pd.concat(out, ignore_index=True)
+        output.append(jittered)
+    return pd.concat(output, ignore_index=True)
 
 df = apply_jitter(load_data())
 df["icon_data"] = [{
@@ -90,7 +90,6 @@ st.subheader("🔎 Explore by Country")
 
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
 
-# Reset dropdown index if Clear Filter clicked
 if st.session_state.reset_country:
     dropdown_index = 0
     st.session_state.reset_country = False
@@ -100,16 +99,15 @@ else:
 selected_country = st.selectbox("Select a country", countries, index=dropdown_index)
 st.session_state.selected_country = selected_country
 
-# Buttons
 col1, col2 = st.columns([0.15, 0.15])
 with col1:
     if st.button("🔍 Zoom to All"):
-        st.session_state.zoom_now = True  # trigger zoom to selected
+        st.session_state.zoom_now = True
 with col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
-        st.session_state.reset_country = True
         st.session_state.zoom_now = True
+        st.session_state.reset_country = True
 
 # ─────────────────────────────────────────────────────────────
 # Apply Filter and Determine Zoom
@@ -120,7 +118,7 @@ map_lat = filtered_df["Latitude"].mean()
 map_lon = filtered_df["Longitude"].mean()
 map_zoom = 1.2 if st.session_state.zoom_now else 3.5
 
-# Reset zoom trigger immediately after use
+# Reset zoom trigger after use
 st.session_state.zoom_now = False
 
 # ─────────────────────────────────────────────────────────────
