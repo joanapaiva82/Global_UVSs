@@ -8,7 +8,7 @@ Alpha ARK-S,Alpha-GEO,China,0.75
 ULAQ Armed USV,Ares Shipyard & Meteksan,Turkey,11
 Albatros (S/T),Aselsan,Turkey,7.2
 ARCIMS,Atlas Elektronik UK,UK,11
-ARCIMS USV (Atlas Remote Combined Influence Minesweeping System),Atlas Elektronik UK,UK/Germany,11
+ARCIMS USV (Atlas Remote Combined Influence Minesweeping System),Atlas Elektronik UK,UK,11
 AutoNaut,"AutoNaut Ltd (Seiche, UK)",UK,3.5
 CEE-USV,CEE HydroSystems,Australia,1.7
 Apache 3,CHC Navigation (CHCNAV),China,1.05
@@ -40,8 +40,8 @@ WAM-V 20,Marine Advanced Robotics (OPT),USA,6.1
 Mariner USV,Maritime Robotics,Norway,
 Otter USV,Maritime Robotics,Norway,2
 Devil Ray T38,MARTAC (Maritime Tactical Systems),USA,11.1
-"Armada Fleet (A8, A15, A78)",Ocean Infinity,USA/Singapore,78
-Armada A78,Ocean Infinity,USA/Singapore,78
+"Armada Fleet (A8, A15, A78)",Ocean Infinity,USA,78
+Armada A78,Ocean Infinity,USA,78
 HydroBoat 1200 USV,OceanAlpha,China,1.2
 HydroBoat 1500 USV,OceanAlpha,China,1.5
 M40 Autonomous USV,OceanAlpha Co.,China,3.5
