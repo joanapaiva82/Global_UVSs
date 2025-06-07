@@ -8,8 +8,10 @@ import numpy as np
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
-st.markdown("Visualize Uncrewed Surface Vessels (USVs) used for hydrographic and geophysical survey — by country and manufacturer.")
 
+# ─────────────────────────────────────────────────────────────
+# Manufacturer Attention Banner
+# ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
     Your USV platform may already be listed here based on publicly available information.
@@ -26,6 +28,7 @@ with st.expander("📌 Are you a USV manufacturer visiting this page? Please rea
 
     This initiative supports my **MSc Hydrography dissertation** at the **University of Plymouth** and aims to strengthen industry visibility across academic and technical domains.
     """)
+
 # ─────────────────────────────────────────────────────────────
 # Disclaimer
 # ─────────────────────────────────────────────────────────────
@@ -38,10 +41,6 @@ with st.expander("📌 Disclaimer (click to expand)"):
     **⚠️ This content is not intended to serve as an official or authoritative source.**  
     Do not rely on this data for operational, procurement, or technical decisions.  
     Please consult the original manufacturers for validated information.
-
-    ---
-    **Author:** Joana Paiva  
-    **Email:** [joana.paiva82@outlook.com](mailto:joana.paiva82@outlook.com)
     """)
 
 # ─────────────────────────────────────────────────────────────
@@ -170,8 +169,12 @@ st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
 
 # ─────────────────────────────────────────────────────────────
-# Safe Rerun (only at the end)
+# Safe Rerun (at the very end)
 # ─────────────────────────────────────────────────────────────
 if st.session_state.rerun_trigger:
     st.session_state.rerun_trigger = False
     st.experimental_rerun()
+
+# Reset zoom flag after rendering
+if st.session_state.zoom_override:
+    st.session_state.zoom_override = False
