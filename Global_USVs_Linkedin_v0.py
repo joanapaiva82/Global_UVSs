@@ -33,7 +33,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Global_USVs_With_LatLon.csv", encoding="utf-8")
+    df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="utf-8")
     df = df.dropna(subset=["Latitude", "Longitude"])
     return df
 
