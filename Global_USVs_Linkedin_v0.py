@@ -4,13 +4,6 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
-# Safe rerun handling
-# ─────────────────────────────────────────────────────────────
-if "rerun_trigger" in st.session_state and st.session_state.rerun_trigger:
-    st.session_state.rerun_trigger = False
-    st.experimental_rerun()
-
-# ─────────────────────────────────────────────────────────────
 # Page Setup
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Global Survey USVs", layout="wide")
@@ -36,7 +29,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load Data and Apply Jitter
+# Load and Jitter Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -64,7 +57,7 @@ def apply_jitter(df, jitter_amount=0.8):
 
 df = apply_jitter(df_raw)
 
-# Add vessel icon
+# Add USV icon
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
     "url": icon_url,
@@ -80,13 +73,15 @@ if "selected_country" not in st.session_state:
     st.session_state.selected_country = "🌍 Show All"
 if "zoom_override" not in st.session_state:
     st.session_state.zoom_override = False
+if "rerun_trigger" not in st.session_state:
+    st.session_state.rerun_trigger = False
 
 # ─────────────────────────────────────────────────────────────
 # Filter Controls
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
-# Dropdown
+# Country dropdown
 selected_country = st.selectbox(
     "Select a country",
     ["🌍 Show All"] + sorted(df["Country"].unique()),
@@ -95,11 +90,12 @@ selected_country = st.selectbox(
 )
 st.session_state.selected_country = selected_country
 
-# Buttons side-by-side
+# Buttons
 btn_col1, btn_col2 = st.columns([0.15, 0.15])
 with btn_col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
+
 with btn_col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
@@ -115,7 +111,7 @@ map_lon = df_table["Longitude"].mean()
 map_zoom = 1.2 if st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All" else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Map Display
+# Display Map
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(pdk.Deck(
@@ -149,10 +145,17 @@ st.pydeck_chart(pdk.Deck(
 ))
 
 # ─────────────────────────────────────────────────────────────
-# Data Table
+# Table
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
 st.dataframe(df_table[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
+
+# ─────────────────────────────────────────────────────────────
+# Safe Rerun (only at the end)
+# ─────────────────────────────────────────────────────────────
+if st.session_state.rerun_trigger:
+    st.session_state.rerun_trigger = False
+    st.experimental_rerun()
