@@ -31,7 +31,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load + Geocode + Safe Merge
+# Load + Geocode + Country Fix
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data_and_centroids():
@@ -40,7 +40,7 @@ def load_data_and_centroids():
     except:
         df = pd.read_csv("Global_USVs_Linkedin.csv", encoding="latin1")
 
-    # Normalize common country names
+    # Fix common country name mismatches
     country_fix = {
         "UK": "United Kingdom",
         "USA": "United States",
@@ -49,7 +49,6 @@ def load_data_and_centroids():
     }
     df["Country"] = df["Country"].replace(country_fix)
 
-    # Geocode unique countries
     geolocator = Nominatim(user_agent="usv_geocoder")
     coords = {}
     for country in df["Country"].dropna().unique():
@@ -60,34 +59,33 @@ def load_data_and_centroids():
         except:
             coords[country] = (None, None)
 
-    # Build lookup DataFrame
     coord_df = pd.DataFrame.from_dict(coords, orient="index", columns=["Latitude", "Longitude"])
     coord_df = coord_df.reset_index().rename(columns={"index": "Country"})
-
-    # Merge with original DataFrame safely
     df = df.merge(coord_df, on="Country", how="left")
-    centroids = {row["Country"]: (row["Latitude"], row["Longitude"]) for _, row in coord_df.iterrows() if pd.notnull(row["Latitude"])}
 
+    centroids = {row["Country"]: (row["Latitude"], row["Longitude"]) for _, row in coord_df.iterrows() if pd.notnull(row["Latitude"])}
     return df.dropna(subset=["Latitude", "Longitude"]), centroids
 
 df_raw, country_centroids = load_data_and_centroids()
 
 # ─────────────────────────────────────────────────────────────
-# Apply jitter for USVs per country
+# Apply jitter using country centroid (fixed logic)
 # ─────────────────────────────────────────────────────────────
 def jitter_data(df, jitter=1.5):
     df = df.copy()
     lat_list, lon_list = [], []
-    grouped = df.groupby("Country")
 
-    for _, group in grouped:
+    for country, group in df.groupby("Country"):
+        center_lat = group["Latitude"].iloc[0]
+        center_lon = group["Longitude"].iloc[0]
         count = len(group)
+
         angles = np.linspace(0, 2 * np.pi, count, endpoint=False)
         lat_offsets = jitter * np.sin(angles)
         lon_offsets = jitter * np.cos(angles)
 
-        lat_list.extend(group["Latitude"].values + lat_offsets)
-        lon_list.extend(group["Longitude"].values + lon_offsets)
+        lat_list.extend(center_lat + lat_offsets)
+        lon_list.extend(center_lon + lon_offsets)
 
     df["Latitude"] = lat_list
     df["Longitude"] = lon_list
@@ -96,7 +94,7 @@ def jitter_data(df, jitter=1.5):
 df = jitter_data(df_raw)
 
 # ─────────────────────────────────────────────────────────────
-# Add your USV icon
+# Add icon to each USV
 # ─────────────────────────────────────────────────────────────
 icon_url = "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png"
 df["icon_data"] = [{
@@ -107,7 +105,7 @@ df["icon_data"] = [{
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Country filter for zoom and table
+# Country filter dropdown
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Select a country")
 countries = sorted(df["Country"].unique())
@@ -122,7 +120,7 @@ else:
     map_lat, map_lon, map_zoom = 10, 0, 1.2
 
 # ─────────────────────────────────────────────────────────────
-# Map Display (always show all USVs)
+# Map: All USVs plotted
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map (all countries)")
 st.pydeck_chart(pdk.Deck(
