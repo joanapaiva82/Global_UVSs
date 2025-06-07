@@ -4,10 +4,18 @@ import pydeck as pdk
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────
-# Safe rerun must be at top BEFORE any widgets render
+# Safe rerun must happen BEFORE widgets render
 # ─────────────────────────────────────────────────────────────
-if "rerun_now" in st.session_state and st.session_state.rerun_now:
-    st.session_state.rerun_now = False
+if "reset_filter" not in st.session_state:
+    st.session_state.reset_filter = False
+if "zoom_override" not in st.session_state:
+    st.session_state.zoom_override = False
+if "selected_country" not in st.session_state:
+    st.session_state.selected_country = "🌍 Show All"
+
+# Trigger rerun if Clear Filter was clicked
+if st.session_state.reset_filter:
+    st.session_state.reset_filter = False
     st.experimental_rerun()
 
 # ─────────────────────────────────────────────────────────────
@@ -17,19 +25,7 @@ st.set_page_config(page_title="Global Survey USVs", layout="wide")
 st.title("🌍 Global Survey USVs Map")
 
 # ─────────────────────────────────────────────────────────────
-# Session State Init
-# ─────────────────────────────────────────────────────────────
-defaults = {
-    "selected_country": "🌍 Show All",
-    "zoom_override": False,
-    "rerun_now": False
-}
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-# ─────────────────────────────────────────────────────────────
-# Manufacturer Banner (FULL TEXT PRESERVED)
+# Manufacturer Call (FULL TEXT)
 # ─────────────────────────────────────────────────────────────
 with st.expander("📌 Are you a USV manufacturer visiting this page? Please read this.", expanded=False):
     st.markdown("""
@@ -63,7 +59,7 @@ with st.expander("📌 Disclaimer (click to expand)"):
     """)
 
 # ─────────────────────────────────────────────────────────────
-# Load and Jitter Data
+# Load + Jitter Data
 # ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
@@ -87,41 +83,43 @@ def apply_jitter(df, jitter=0.8):
 df = apply_jitter(load_data())
 df["icon_data"] = [{
     "url": "https://raw.githubusercontent.com/joanapaiva82/Global_UVSs/main/usv.png",
-    "width": 512, "height": 512, "anchorY": 512
+    "width": 512,
+    "height": 512,
+    "anchorY": 512
 } for _ in range(len(df))]
 
 # ─────────────────────────────────────────────────────────────
-# Filter and Buttons
+# Country Filter + Buttons (Safe Method)
 # ─────────────────────────────────────────────────────────────
 st.subheader("🔎 Explore by Country")
 
 countries = ["🌍 Show All"] + sorted(df["Country"].unique())
-selected_index = countries.index(st.session_state.selected_country)
+selected_index = 0 if st.session_state.selected_country == "🌍 Show All" else countries.index(st.session_state.selected_country)
+
 selected_country = st.selectbox("Select a country", countries, index=selected_index, key="selected_country")
 
 col1, col2 = st.columns([0.15, 0.15])
 with col1:
     if st.button("🔍 Zoom to All"):
         st.session_state.zoom_override = True
-
 with col2:
     if st.button("🧹 Clear Filter"):
         st.session_state.selected_country = "🌍 Show All"
         st.session_state.zoom_override = True
-        st.session_state.rerun_now = True  # triggers safe rerun
+        st.session_state.reset_filter = True
 
 # ─────────────────────────────────────────────────────────────
-# Apply filter and zoom logic
+# Filter and Zoom Logic
 # ─────────────────────────────────────────────────────────────
-filtered_df = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
-zoom_out = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
+df_filtered = df if st.session_state.selected_country == "🌍 Show All" else df[df["Country"] == st.session_state.selected_country]
+zooming = st.session_state.zoom_override or st.session_state.selected_country == "🌍 Show All"
 
-map_lat = filtered_df["Latitude"].mean()
-map_lon = filtered_df["Longitude"].mean()
-map_zoom = 1.2 if zoom_out else 3.5
+map_lat = df_filtered["Latitude"].mean()
+map_lon = df_filtered["Longitude"].mean()
+map_zoom = 1.2 if zooming else 3.5
 
 # ─────────────────────────────────────────────────────────────
-# Display Map with dynamic key
+# Map Rendering with Dynamic Key
 # ─────────────────────────────────────────────────────────────
 st.subheader("🗺️ USV Map")
 st.pydeck_chart(
@@ -135,7 +133,7 @@ st.pydeck_chart(
         layers=[
             pdk.Layer(
                 "IconLayer",
-                data=filtered_df,
+                data=df_filtered,
                 get_icon="icon_data",
                 get_position='[Longitude, Latitude]',
                 size_scale=15,
@@ -145,26 +143,26 @@ st.pydeck_chart(
         ],
         tooltip={
             "html": """
-                <b>{Name}</b><br>
-                🏭 <b>Manufacturer:</b> {Manufacturer}<br>
-                🌍 <b>Country:</b> {Country}<br>
-                📏 <b>Length:</b> {Max. Length (m)} m
+            <b>{Name}</b><br>
+            🏭 <b>Manufacturer:</b> {Manufacturer}<br>
+            🌍 <b>Country:</b> {Country}<br>
+            📏 <b>Length:</b> {Max. Length (m)} m
             """,
             "style": {"backgroundColor": "white", "color": "black"}
         }
     ),
-    key="map_zoom_reset" if zoom_out else "map_static"
+    key="zoom_all" if zooming else "zoom_filtered"
 )
 
-# Reset zoom after use
+# Reset zoom flag after render
 if st.session_state.zoom_override:
     st.session_state.zoom_override = False
 
 # ─────────────────────────────────────────────────────────────
-# Table
+# Table View
 # ─────────────────────────────────────────────────────────────
 st.subheader("📋 Filtered USV List")
-st.dataframe(filtered_df[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
+st.dataframe(df_filtered[["Name", "Manufacturer", "Country", "Max. Length (m)"]])
 
 st.markdown("---")
 st.caption("📍 MSc Hydrography Dissertation – Joana Paiva, University of Plymouth")
